@@ -1,0 +1,26 @@
+[
+  {
+    "id": "0xa6beb441aca01d0510d6137683e6bbb5413f40eda9ee64ba0c2ebf2d06543a33",
+    "serial_number": "12345",
+    "name": "Parasafe",
+    "manufacturer": "Cipla",
+    "batch_number": "29384829",
+    "production_date": "2025-04-01",
+    "expiration_date": "2026-04-30",
+    "status": "activated",
+    "activation_timestamp": "2025-04-09T11:17:41.911869+00:00",
+    "timestamp": "2025-04-09T11:07:24.756Z"
+  },
+  {
+    "id": "0xb738bf7aab1399b8622e1bf649b77145d9fa7933a2889cf699060bdb38ade1a9",
+    "serial_number": "00000",
+    "name": "Azithral",
+    "manufacturer": "Pharma",
+    "batch_number": "838383",
+    "production_date": "2025-04-09",
+    "expiration_date": "2026-04-09",
+    "status": "activated",
+    "activation_timestamp": "2025-04-09T11:33:27.632193+00:00",
+    "timestamp": "2025-04-09T11:26:23.981Z"
+  }
+]

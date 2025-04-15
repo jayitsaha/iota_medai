@@ -1,0 +1,79 @@
+[
+  {
+    "service_id": "c9acfefe-871b-41fd-b8a8-1561b40a6449",
+    "provider_id": "demo-user",
+    "title": "jdjsn",
+    "category": "wellness",
+    "description": "nsnsnss",
+    "price": 1,
+    "provider_credentials": "",
+    "verification_status": "verified",
+    "timestamp": "2025-04-10T07:41:28.952Z"
+  },
+  {
+    "service_id": "9030f90d-de19-4d6e-a3b8-dcea2a657dca",
+    "provider_id": "demo-user",
+    "title": "nsjsns",
+    "category": "wellness",
+    "description": "nznznznz",
+    "price": 1,
+    "provider_credentials": "",
+    "verification_status": "verified",
+    "timestamp": "2025-04-10T07:46:05.002Z"
+  },
+  {
+    "service_id": "7712977c-a1d5-4701-909d-38bd235ba402",
+    "provider_id": "demo-user",
+    "title": "12244",
+    "category": "wellness",
+    "description": "nznsnsns",
+    "price": 1,
+    "provider_credentials": "",
+    "verification_status": "verified",
+    "timestamp": "2025-04-10T07:48:19.721Z"
+  },
+  {
+    "service_id": "3a3a50eb-4f7e-4792-bc2f-95604f5c106c",
+    "provider_id": "demo-user",
+    "title": "yvuuibub",
+    "category": "homecare",
+    "description": "h h j i j",
+    "price": 3,
+    "provider_credentials": "",
+    "verification_status": "verified",
+    "timestamp": "2025-04-12T12:05:38.144Z"
+  },
+  {
+    "service_id": "10a3042d-37d2-47a5-81c8-4e559e3b5620",
+    "provider_id": "provider_123456",
+    "title": "j kchc",
+    "category": "homecare",
+    "description": "h b n j ",
+    "price": 5,
+    "provider_credentials": "MD, Cardiology Specialist",
+    "verification_status": "verified",
+    "timestamp": "2025-04-12T14:58:09.885Z"
+  },
+  {
+    "service_id": "1f3063dd-df60-4c87-9662-6596e0c668c4",
+    "provider_id": "provider_123456",
+    "title": "sjsnsms",
+    "category": "wellness",
+    "description": "snsnsnsns",
+    "price": 10,
+    "provider_credentials": "MD, Cardiology Specialist",
+    "verification_status": "verified",
+    "timestamp": "2025-04-12T15:03:41.847Z"
+  },
+  {
+    "service_id": "81593bcc-dc2c-4c81-a472-235a960195e2",
+    "provider_id": "provider_123456",
+    "title": "1234",
+    "category": "homecare",
+    "description": "dhhsnsnz",
+    "price": 5,
+    "provider_credentials": "MD, Cardiology Specialist",
+    "verification_status": "verified",
+    "timestamp": "2025-04-12T15:12:17.995Z"
+  }
+]

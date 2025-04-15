@@ -1,0 +1,17 @@
+[
+  {
+    "id": "50539cc2-1ff8-4121-929a-01b8d8acbd5b",
+    "service": "81593bcc-dc2c-4c81-a472-235a960195e2",
+    "user": "provider_123456",
+    "userWalletAddress": "tst1qr2vvq7u3zczg3fw8zdfgh0pw2dpu8w3px8ccrs2jhwjz580er7lcs9g403",
+    "providerWalletAddress": "tst1qr2vvq7u3zczg3fw8zdfgh0pw2dpu8w3px8ccrs2jhwjz580er7lcs9g403",
+    "appointmentDate": "2025-04-17T00:00:00.000Z",
+    "price": 5,
+    "status": "Scheduled",
+    "paymentStatus": "Pending",
+    "transactionId": "0xa7b08cbdc3d7ea6f1e6428cc6a98f94c1a9ac9068d445fc2b4481451455cb43f",
+    "blockchainStatus": "Confirmed",
+    "createdAt": "2025-04-12T15:12:37.465Z",
+    "updatedAt": "2025-04-12T15:12:37.466Z"
+  }
+]

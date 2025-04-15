@@ -1,0 +1,16 @@
+[
+  {
+    "id": "78e0c7a3-1711-4fbe-bb5f-3e793edf5924",
+    "user": "fixed_user_123",
+    "walletId": "fixed_wallet_123",
+    "address": "tst1qrx5r5ft0pflm99n8hgjqdwqle7d8cqnw627cfz2pfz4llw3wf9k6ewurdd",
+    "displayBalance": 1668,
+    "tokenSymbol": "TST",
+    "mnemonic": "(securely stored)",
+    "createdAt": "2025-04-12T13:20:53.622Z",
+    "lastUpdated": "2025-04-14T08:06:45.120Z",
+    "updatedAt": "2025-04-14T08:06:45.122Z",
+    "lastFaucetRequest": "2025-04-12T15:13:34.460Z",
+    "balance": 1668000000
+  }
+]

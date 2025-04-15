@@ -1,0 +1,38 @@
+[
+  {
+    "id": "demo-user",
+    "role": "admin"
+
+    
+  },
+  {
+    "id": "provider_123456",
+    "name": "Dr. Sarah Johnson",
+    "email": "dr.johnson@medicalhub.example",
+    "role": "provider",
+    "credentials": "MD, Cardiology Specialist",
+    "specialization": "Cardiology",
+    "licenseNumber": "MED12345678",
+    "walletAddress": "tst1qr2vvq7u3zczg3fw8zdfgh0pw2dpu8w3px8ccrs2jhwjz580er7lcs9g403",
+    "bio": "Dr. Sarah Johnson is a board-certified cardiologist with over 15 years of experience in treating cardiovascular conditions. She specializes in preventive cardiology and heart health management.",
+    "contactInfo": {
+      "phone": "+1-555-123-4567",
+      "address": "123 Medical Center Blvd, Suite 456, Healthcare City, HC 12345"
+    },
+    "availability": {
+      "monday": ["09:00-12:00", "14:00-17:00"],
+      "tuesday": ["09:00-12:00", "14:00-17:00"],
+      "wednesday": ["09:00-12:00", "14:00-17:00"],
+      "thursday": ["09:00-12:00", "14:00-17:00"],
+      "friday": ["09:00-13:00"]
+    },
+    "rating": 4.9,
+    "reviewCount": 127,
+    "registrationDate": "2023-06-15T10:30:00.000Z",
+    "verificationStatus": "verified",
+    "services": ["srv-001", "srv-004", "srv-008"],
+    "profileImageUrl": "https://example.com/providers/dr-johnson.jpg",
+    "blockchainVerified": true,
+    "lastActive": "2025-04-10T14:22:15.000Z"
+  }
+]

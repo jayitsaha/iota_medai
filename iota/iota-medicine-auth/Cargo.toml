@@ -1,0 +1,26 @@
+[package]
+name = "iota_medicine_auth"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "iota_medicine_submit"
+path = "src/iota_medicine_submit.rs"
+
+[[bin]]
+name = "iota_medicine_fetch"
+path = "src/iota_medicine_fetch.rs"
+
+[[bin]]
+name = "iota_medicine_activate"
+path = "src/iota_medicine_activate.rs"
+
+[dependencies]
+anyhow = "1.0"
+iota-client = "2.0.1-rc.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.28", features = ["full"] }
+dotenv = "0.15.0"
+hex = "0.4.3"  # For hex encoding/decoding
+chrono = "0.4"  # For timestamp handling

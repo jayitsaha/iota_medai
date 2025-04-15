@@ -1,0 +1,34 @@
+[
+  {
+    "id": "7cab1acb-afba-409a-a78b-5f0895b009de",
+    "name": "uvivibo",
+    "location": {
+      "latitude": 12.9325443,
+      "longitude": 77.6928473,
+      "address": "uvuvvib",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "country": "India",
+      "postal_code": "560103"
+    },
+    "contact": {
+      "phone": "6068228",
+      "email": "hvivvi",
+      "website": "uvvibib",
+      "emergency_phone": "606060828"
+    },
+    "services": [
+      "Gynecology",
+      "Laboratory",
+      "Orthopedics",
+      "Cardiology"
+    ],
+    "emergency_capacity": 10,
+    "verification_status": "verified",
+    "blockchainTransactionId": "0xb047e3d53cc9b8aa5299ad460de6bc389850554702948fd00e776df9bb14365d",
+    "blockchainStatus": "Confirmed",
+    "adminId": "demo-user",
+    "createdAt": "2025-04-14T08:32:11.141Z",
+    "updatedAt": "2025-04-14T08:32:11.141Z"
+  }
+]

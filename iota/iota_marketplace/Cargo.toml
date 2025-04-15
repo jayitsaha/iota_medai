@@ -1,0 +1,72 @@
+[package]
+name = "iota-marketplace"
+version = "0.1.0"
+edition = "2021"
+authors = ["Healthcare Blockchain Team"]
+description = "IOTA-based marketplace for healthcare services"
+
+[dependencies]
+dotenv = "0.15"
+iota-client = "2.0.1-rc.7"
+iota-wallet = "1.0.0-rc.6"
+tokio = { version = "1.28", features = ["full"] }
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rand = "0.9.0"
+reqwest = { version = "0.11", features = ["json"] } # Added for faucet HTTP requests
+chrono = "0.4" # Added for timestamp generation
+
+
+
+[[bin]]
+name = "iota_marketplace_submit"
+path = "src/iota_marketplace_submit.rs"
+
+[[bin]]
+name = "iota_marketplace_fetch"
+path = "src/iota_marketplace_fetch.rs"
+
+[[bin]]
+name = "iota_marketplace_payment"
+path = "src/iota_marketplace_payment.rs"
+
+[[bin]]
+name = "iota_wallet"
+path = "src/iota_wallet.rs"
+
+[[bin]]
+name = "iota_transfer"
+path = "src/iota_transfer.rs"
+
+
+[[bin]]
+name = "iota_service_register"
+path = "src/iota_service_register.rs"
+
+
+[[bin]]
+name = "iota_service_verify"
+path = "src/iota_service_verify.rs"
+
+
+[[bin]]
+name = "iota_service_fetch"
+path = "src/iota_service_fetch.rs"
+
+
+[[bin]]
+name = "iota_faucet_request"
+path = "src/iota_faucet_request.rs"
+
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+opt-level = 3
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true

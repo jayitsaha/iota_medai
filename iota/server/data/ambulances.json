@@ -1,0 +1,42 @@
+[
+  {
+    "registration_number": "tct u ",
+    "capacity": 1,
+    "hospital_id": "7cab1acb-afba-409a-a78b-5f0895b009de",
+    "current_location": null,
+    "createdAt": "2025-04-14T08:56:03.338Z",
+    "vehicle_type": "Basic",
+    "equipment": [
+      "ECG Monitor",
+      "IV Equipment",
+      "Suction Device"
+    ],
+    "blockchainStatus": "Confirmed",
+    "id": "688bb843-a1bf-40bd-aa92-c8e73876e6d7",
+    "updatedAt": "2025-04-14T09:09:20.584Z",
+    "last_updated": "2025-04-14T09:08:50.268Z",
+    "blockchainTransactionId": "0xf5d2170b37c01e6ce2339a4ddd5a71bf7fc0a5828c64aa90d3479dc1bf3df4f5",
+    "current_status": "Dispatched"
+  },
+  {
+    "id": "4d236af4-f550-4f83-b6e3-1b7fc48f3cbd",
+    "hospital_id": "7cab1acb-afba-409a-a78b-5f0895b009de",
+    "registration_number": "ienxieoxbex",
+    "vehicle_type": "Basic",
+    "capacity": 1,
+    "equipment": [
+      "IV Equipment",
+      "Medications",
+      "Blood Pressure Monitor",
+      "First Aid Kit",
+      "ECG Monitor"
+    ],
+    "current_status": "Maintenance",
+    "current_location": null,
+    "blockchainTransactionId": "0xc65c1b06d7bd5cea93e4503f4318256e6eb9dcd306a8e086ac355f9e151047b4",
+    "blockchainStatus": "Confirmed",
+    "createdAt": "2025-04-14T09:08:06.732Z",
+    "updatedAt": "2025-04-14T09:09:17.252Z",
+    "last_updated": "2025-04-14T09:09:13.480Z"
+  }
+]

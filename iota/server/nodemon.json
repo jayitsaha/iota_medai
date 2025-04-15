@@ -1,0 +1,8 @@
+{
+    "ignore": [
+      "wallet_database/*",
+      "wallet_stronghold/*",
+      "*.lock"
+    ],
+    "delay": "5000"
+  }
