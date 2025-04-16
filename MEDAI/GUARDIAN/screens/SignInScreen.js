@@ -435,9 +435,7 @@ const SignInScreen = ({route, navigation}) => {
 
 
           <TouchableOpacity
-            onPress={() => {
-              navigation.navigate('SignUpScreen');
-            }}
+            onPress={() => navigation.navigate('HospitalLogin')}
             style={[
               styles.signIn,
               {
@@ -453,7 +451,7 @@ const SignInScreen = ({route, navigation}) => {
                   color: '#90A4AE',
                 },
               ]}>
-              Sign Up
+              Sign in as Hospital Admin
             </Text>
           </TouchableOpacity>
         </View>
