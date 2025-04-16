@@ -29,6 +29,12 @@
           "recordAudioAndroid": true
         }
       ],
+      [
+        "expo-barcode-scanner",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access camera."
+        }
+      ],
       "expo-speech-recognition",
       "expo-video"
     ],

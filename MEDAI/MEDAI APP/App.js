@@ -15,6 +15,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Import the SmartBottomTabNavigator
+import DynamicBottomTabNavigator from './navigation/DynamicBottomTabNavigator';
+import PregnancyBottomTabNavigator from './navigation/PregnancyBottomTabNavigator';
+
 // Persona Selection Screen
 import PersonaSelectionScreen from './screens/onboarding/PersonaSelectionScreen';
 
@@ -25,6 +29,12 @@ import LoginScreen from './screens/LoginScreen';
 import AlzheimersHomeScreen from './screens/alzheimers/HomeScreen';
 import MedicationScreen from './screens/alzheimers/MedicationScreen';
 import SafeZoneScreen from './screens/alzheimers/SafeZoneScreen';
+
+// New Blockchain-powered Screens
+import HealthRecordsScreen from './screens/alzheimers/HealthRecordsScreen';
+import MedicineAuthScreen from './screens/alzheimers/MedicineAuthScreen';
+import OrganDonationScreen from './screens/alzheimers/OrganDonationScreen';
+// import ProfileScreen from './screens/alzheimers/ProfileScreen';
 
 // Marketplace and Wallet Screens
 import MarketplaceScreen from './screens/marketplace/MarketplaceScreen';
@@ -47,13 +57,16 @@ import { setupNotifications } from './services/NotificationService';
 import { WalletProvider } from './services/walletService'; 
 
 const Tab = createBottomTabNavigator();
-const AlzheimersStack = createStackNavigator();
-const PregnancyStack = createStackNavigator();
+const Stack = createStackNavigator();
 const RootStack = createStackNavigator();
 
-const AlzheimersNavigator = ({ navigation, logoutHandler }) => {
+// Define a common stack for any additional screens that need to be accessible
+// from the SmartBottomTabNavigator but aren't part of the primary navigation
+const CommonStack = createStackNavigator();
+
+const CommonStackNavigator = ({ navigation, logoutHandler }) => {
   return (
-    <AlzheimersStack.Navigator 
+    <CommonStack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: '#6A5ACD' },
         headerTintColor: '#fff',
@@ -66,14 +79,8 @@ const AlzheimersNavigator = ({ navigation, logoutHandler }) => {
                 "Logout",
                 "Are you sure you want to logout?",
                 [
-                  {
-                    text: "Cancel",
-                    style: "cancel"
-                  },
-                  { 
-                    text: "Logout", 
-                    onPress: () => logoutHandler() 
-                  }
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Logout", onPress: () => logoutHandler() }
                 ]
               );
             }}
@@ -83,109 +90,134 @@ const AlzheimersNavigator = ({ navigation, logoutHandler }) => {
         )
       }}
     >
-      <AlzheimersStack.Screen 
-        name="HomeScreen"
-        component={AlzheimersHomeScreen} 
-        options={{ 
-          title: 'MEDAI Home',
-          headerShown: false
-        }} 
-      />
-      <AlzheimersStack.Screen 
-        name="Medication" 
-        component={MedicationScreen} 
-        options={{ title: 'My Medications' }} 
-      />
-      <AlzheimersStack.Screen 
-        name="SafeZone" 
-        component={SafeZoneScreen} 
-        options={{ title: 'Safe Zone Settings' }} 
-      />
-      <AlzheimersStack.Screen 
-        name="Marketplace" 
-        component={MarketplaceScreen} 
-        options={{ title: 'Healthcare Marketplace' }} 
-      />
-      <AlzheimersStack.Screen 
-        name="Wallet" 
-        component={WalletScreen} 
-        options={{ title: 'My Wallet' }} 
-      />
-      <AlzheimersStack.Screen 
+      {/* <CommonStack.Screen 
         name="ServiceDetails" 
         component={ServiceDetailsScreen} 
         options={{ title: 'Service Details' }} 
       />
-      <AlzheimersStack.Screen 
+      <CommonStack.Screen 
         name="MyBookings" 
         component={MyBookingsScreen} 
         options={{ title: 'My Bookings' }} 
-      />
-    </AlzheimersStack.Navigator>
+      /> */}
+    </CommonStack.Navigator>
   );
 };
 
-const PregnancyNavigator = ({ navigation, logoutHandler }) => {
+// Configure the Alzheimer's Smart Navigation
+const AlzheimersSmartNavigator = ({ logoutHandler }) => {
+  // Define all screens available in the Alzheimer's persona
+  const alzheimersScreens = {
+    // Primary tabs
+    Home: AlzheimersHomeScreen,
+    Profile: props => (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontSize: 18, marginBottom: 20 }}>Profile Screen</Text>
+        <TouchableOpacity
+          style={{ backgroundColor: '#6A5ACD', padding: 15, borderRadius: 8 }}
+          onPress={() => {
+            Alert.alert(
+              "Logout",
+              "Are you sure you want to logout?",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Logout", onPress: () => logoutHandler() }
+              ]
+            );
+          }}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+    ),
+    
+    // Health group
+    Medication: MedicationScreen,
+    HealthRecords: HealthRecordsScreen,
+    MedicineAuth: MedicineAuthScreen,
+    ServiceDetails: ServiceDetailsScreen,
+    MyBookings: MyBookingsScreen,
+    
+    
+    // Safety group
+    SafeZone: SafeZoneScreen,
+    Contacts: props => (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontSize: 18 }}>Emergency Contacts Screen</Text>
+      </View>
+    ),
+    FallDetection: props => (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontSize: 18 }}>Fall Detection Settings</Text>
+      </View>
+    ),
+    
+    // More group
+    Marketplace: MarketplaceScreen,
+    Wallet: WalletScreen,
+    OrganDonation: OrganDonationScreen,
+    Journal: props => (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontSize: 18 }}>Memory Journal Screen</Text>
+      </View>
+    )
+  };
+
   return (
-    <PregnancyStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: '#FF69B4' },
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: 'bold' },
-        headerRight: () => (
-          <TouchableOpacity 
-            style={{ marginRight: 15 }}
-            onPress={() => {
-              Alert.alert(
-                "Logout",
-                "Are you sure you want to logout?",
-                [
-                  {
-                    text: "Cancel",
-                    style: "cancel"
-                  },
-                  { 
-                    text: "Logout", 
-                    onPress: () => logoutHandler() 
-                  }
-                ]
-              );
-            }}
-          >
-            <Ionicons name="log-out-outline" size={24} color="white" />
-          </TouchableOpacity>
-        )
-      }}
-    >
-      <PregnancyStack.Screen 
-        name="HomeScreen"
-        component={PregnancyHomeScreen} 
-        options={{ 
-          title: 'MEDAI Home',
-          headerShown: false
-        }} 
-      />
-      <PregnancyStack.Screen 
-        name="Yoga" 
-        component={YogaScreen} 
-        options={{ title: 'Prenatal Yoga' }} 
-      />
-      <PregnancyStack.Screen 
-        name="Chatbot" 
-        component={ChatbotScreen} 
-        options={{ title: 'Pregnancy Assistant' }} 
-      />
-      <PregnancyStack.Screen 
-        name="Diet" 
-        component={DietScreen} 
-        options={{ title: 'Diet & Nutrition' }} 
-      />
-      <PregnancyStack.Screen 
-        name="Appointments" 
-        component={AppointmentScreen} 
-        options={{ title: 'Appointment Scheduler' }} 
-      />
-    </PregnancyStack.Navigator>
+    <DynamicBottomTabNavigator 
+      screens={alzheimersScreens}
+      logoutHandler={logoutHandler}
+    />
+  );
+};
+
+// Configure the Pregnancy persona navigation using PregnancyBottomTabNavigator
+const PregnancySmartNavigator = ({ logoutHandler }) => {
+  // Define all screens available in the pregnancy persona
+  const pregnancyScreens = {
+    // Primary tabs
+    Home: PregnancyHomeScreen,
+    Profile: props => (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontSize: 18, marginBottom: 20 }}>Profile Screen</Text>
+        <TouchableOpacity
+          style={{ backgroundColor: '#FF69B4', padding: 15, borderRadius: 8 }}
+          onPress={() => {
+            Alert.alert(
+              "Logout",
+              "Are you sure you want to logout?",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Logout", onPress: () => logoutHandler() }
+              ]
+            );
+          }}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+    ),
+    
+    // Wellness group
+    Yoga: YogaScreen,
+    Diet: DietScreen,
+    Appointments: AppointmentScreen,
+    
+    // Support group
+    Chatbot: ChatbotScreen,
+    Community: props => (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontSize: 18 }}>Pregnancy Community</Text>
+        <Text style={{ marginTop: 10, color: '#666' }}>Connect with other expecting mothers</Text>
+      </View>
+    )
+  };
+
+  return (
+    <PregnancyBottomTabNavigator 
+      screens={pregnancyScreens}
+      logoutHandler={logoutHandler}
+    />
   );
 };
 
@@ -193,6 +225,7 @@ const App = () => {
   const [userType, setUserType] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [useEnhancedFeatures, setUseEnhancedFeatures] = useState(false);
   const navigationRef = useRef(null);
 
   // Function to check login status - can be called multiple times
@@ -203,12 +236,14 @@ const App = () => {
       
       const storedIsLoggedIn = await AsyncStorage.getItem('isLoggedIn');
       const storedUserType = await AsyncStorage.getItem('userType');
+      const storedEnhancedFeatures = await AsyncStorage.getItem('useEnhancedFeatures');
       
       console.log('Stored values - isLoggedIn:', storedIsLoggedIn, 'userType:', storedUserType);
       
       if (storedIsLoggedIn === 'true' && storedUserType) {
         setIsLoggedIn(true);
         setUserType(storedUserType);
+        setUseEnhancedFeatures(storedEnhancedFeatures === 'true');
       } else {
         setIsLoggedIn(false);
         setUserType(null);
@@ -221,9 +256,10 @@ const App = () => {
   };
 
   // Function to handle login from LoginScreen
-  const handleLogin = async (type) => {
+  const handleLogin = async (type, useEnhanced = false) => {
     await AsyncStorage.setItem('isLoggedIn', 'true');
     await AsyncStorage.setItem('userType', type);
+    await AsyncStorage.setItem('useEnhancedFeatures', useEnhanced ? 'true' : 'false');
     await checkLoginStatus();
   };
 
@@ -292,275 +328,11 @@ const App = () => {
               </RootStack.Screen>
             </RootStack.Navigator>
           ) : userType === 'alzheimers' ? (
-            <Tab.Navigator
-              screenOptions={({ route }) => ({
-                tabBarIcon: ({ focused, color, size }) => {
-                  let iconName;
-                  
-                  if (route.name === 'Home') {
-                    iconName = focused ? 'home' : 'home-outline';
-                  } else if (route.name === 'Medication') {
-                    iconName = focused ? 'medkit' : 'medkit-outline';
-                  } else if (route.name === 'SafeZone') {
-                    iconName = focused ? 'location' : 'location-outline';
-                  } else if (route.name === 'Marketplace') {
-                    iconName = focused ? 'cart' : 'cart-outline';
-                  } else if (route.name === 'Wallet') {
-                    iconName = focused ? 'wallet' : 'wallet-outline';
-                  }
-                  
-                  return <Ionicons name={iconName} size={size} color={color} />;
-                },
-                tabBarActiveTintColor: '#6A5ACD',
-                tabBarInactiveTintColor: 'gray',
-                tabBarStyle: {
-                  elevation: 0,
-                  borderTopWidth: 1,
-                  borderTopColor: '#F0F0F0',
-                  height: 60,
-                  paddingBottom: 8,
-                  paddingTop: 8,
-                }
-              })}
-            >
-              <Tab.Screen 
-                name="Home" 
-                options={{ headerShown: false }}
-              >
-                {props => <AlzheimersNavigator {...props} logoutHandler={handleLogout} />}
-              </Tab.Screen>
-              <Tab.Screen 
-                name="Medication" 
-                component={MedicationScreen}
-                options={{
-                  title: 'Medications',
-                  headerRight: () => (
-                    <TouchableOpacity 
-                      style={{ marginRight: 15 }}
-                      onPress={() => {
-                        Alert.alert(
-                          "Logout",
-                          "Are you sure you want to logout?",
-                          [
-                            {
-                              text: "Cancel",
-                              style: "cancel"
-                            },
-                            { 
-                              text: "Logout", 
-                              onPress: () => handleLogout() 
-                            }
-                          ]
-                        );
-                      }}
-                    >
-                      <Ionicons name="log-out-outline" size={24} color="#6A5ACD" />
-                    </TouchableOpacity>
-                  )
-                }}
-              />
-              <Tab.Screen 
-                name="Marketplace" 
-                component={MarketplaceScreen}
-                options={{
-                  title: 'Marketplace',
-                  headerShown: false,
-                }}
-              />
-              <Tab.Screen 
-                name="Wallet" 
-                component={WalletScreen}
-                options={{
-                  title: 'My Wallet',
-                  headerShown: false,
-                }}
-              />
-              <Tab.Screen 
-                name="SafeZone" 
-                component={SafeZoneScreen}
-                options={{
-                  title: 'Safe Zone',
-                  headerRight: () => (
-                    <TouchableOpacity 
-                      style={{ marginRight: 15 }}
-                      onPress={() => {
-                        Alert.alert(
-                          "Logout",
-                          "Are you sure you want to logout?",
-                          [
-                            {
-                              text: "Cancel",
-                              style: "cancel"
-                            },
-                            { 
-                              text: "Logout", 
-                              onPress: () => handleLogout() 
-                            }
-                          ]
-                        );
-                      }}
-                    >
-                      <Ionicons name="log-out-outline" size={24} color="#6A5ACD" />
-                    </TouchableOpacity>
-                  )
-                }}
-              />
-            </Tab.Navigator>
+            // Use the new Smart Navigation for Alzheimer's
+            <AlzheimersSmartNavigator logoutHandler={handleLogout} />
           ) : (
-            <Tab.Navigator
-              screenOptions={({ route }) => ({
-                tabBarIcon: ({ focused, color, size }) => {
-                  let iconName;
-                  
-                  if (route.name === 'Home') {
-                    iconName = focused ? 'home' : 'home-outline';
-                  } else if (route.name === 'Yoga') {
-                    iconName = focused ? 'fitness' : 'fitness-outline';
-                  } else if (route.name === 'Chatbot') {
-                    iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-                  } else if (route.name === 'Diet') {
-                    iconName = focused ? 'nutrition' : 'nutrition-outline';
-                  } else if (route.name === 'Appointments') {
-                    iconName = focused ? 'calendar' : 'calendar-outline';
-                  }
-                  
-                  return <Ionicons name={iconName} size={size} color={color} />;
-                },
-                tabBarActiveTintColor: '#FF69B4',
-                tabBarInactiveTintColor: 'gray',
-                tabBarStyle: {
-                  elevation: 0,
-                  borderTopWidth: 1,
-                  borderTopColor: '#F0F0F0',
-                  height: 60,
-                  paddingBottom: 8,
-                  paddingTop: 8,
-                }
-              })}
-            >
-              <Tab.Screen 
-                name="Home" 
-                options={{ headerShown: false }}
-              >
-                {props => <PregnancyNavigator {...props} logoutHandler={handleLogout} />}
-              </Tab.Screen>
-              <Tab.Screen 
-                name="Yoga" 
-                component={YogaScreen}
-                options={{
-                  headerRight: () => (
-                    <TouchableOpacity 
-                      style={{ marginRight: 15 }}
-                      onPress={() => {
-                        Alert.alert(
-                          "Logout",
-                          "Are you sure you want to logout?",
-                          [
-                            {
-                              text: "Cancel",
-                              style: "cancel"
-                            },
-                            { 
-                              text: "Logout", 
-                              onPress: () => handleLogout() 
-                            }
-                          ]
-                        );
-                      }}
-                    >
-                      <Ionicons name="log-out-outline" size={24} color="#FF69B4" />
-                    </TouchableOpacity>
-                  )
-                }}
-              />
-              <Tab.Screen 
-                name="Chatbot" 
-                component={ChatbotScreen}
-                options={{
-                  headerRight: () => (
-                    <TouchableOpacity 
-                      style={{ marginRight: 15 }}
-                      onPress={() => {
-                        Alert.alert(
-                          "Logout",
-                          "Are you sure you want to logout?",
-                          [
-                            {
-                              text: "Cancel",
-                              style: "cancel"
-                            },
-                            { 
-                              text: "Logout", 
-                              onPress: () => handleLogout() 
-                            }
-                          ]
-                        );
-                      }}
-                    >
-                      <Ionicons name="log-out-outline" size={24} color="#FF69B4" />
-                    </TouchableOpacity>
-                  )
-                }}
-              />
-              <Tab.Screen 
-                name="Diet" 
-                component={DietScreen}
-                options={{
-                  headerRight: () => (
-                    <TouchableOpacity 
-                      style={{ marginRight: 15 }}
-                      onPress={() => {
-                        Alert.alert(
-                          "Logout",
-                          "Are you sure you want to logout?",
-                          [
-                            {
-                              text: "Cancel",
-                              style: "cancel"
-                            },
-                            { 
-                              text: "Logout", 
-                              onPress: () => handleLogout() 
-                            }
-                          ]
-                        );
-                      }}
-                    >
-                      <Ionicons name="log-out-outline" size={24} color="#FF69B4" />
-                    </TouchableOpacity>
-                  )
-                }}
-              />
-              <Tab.Screen 
-                name="Appointments" 
-                component={AppointmentScreen}
-                options={{
-                  headerRight: () => (
-                    <TouchableOpacity 
-                      style={{ marginRight: 15 }}
-                      onPress={() => {
-                        Alert.alert(
-                          "Logout",
-                          "Are you sure you want to logout?",
-                          [
-                            {
-                              text: "Cancel",
-                              style: "cancel"
-                            },
-                            { 
-                              text: "Logout", 
-                              onPress: () => handleLogout() 
-                            }
-                          ]
-                        );
-                      }}
-                    >
-                      <Ionicons name="log-out-outline" size={24} color="#FF69B4" />
-                    </TouchableOpacity>
-                  )
-                }}
-              />
-            </Tab.Navigator>
+            // Use the new Smart Navigation for Pregnancy
+            <PregnancySmartNavigator logoutHandler={handleLogout} />
           )}
         </NavigationContainer>
       </WalletProvider>
