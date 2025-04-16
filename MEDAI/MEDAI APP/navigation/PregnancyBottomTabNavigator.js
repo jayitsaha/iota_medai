@@ -194,6 +194,18 @@ const PregnancyBottomTabNavigator = ({ screens, logoutHandler }) => {
             headerShown: screen.name !== 'Home'
           }}
         />
+        
+        {/* Common screens that need to be accessible from any stack */}
+        <Stack.Screen 
+          name="ServiceDetails" 
+          component={screens.ServiceDetails || (() => <View><Text>Service Details</Text></View>)} 
+          options={{ title: 'Service Details' }} 
+        />
+        <Stack.Screen 
+          name="MyBookings" 
+          component={screens.MyBookings || (() => <View><Text>My Bookings</Text></View>)} 
+          options={{ title: 'My Bookings' }} 
+        />
       </Stack.Navigator>
     );
   };

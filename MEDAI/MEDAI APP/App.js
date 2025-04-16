@@ -90,7 +90,7 @@ const CommonStackNavigator = ({ navigation, logoutHandler }) => {
         )
       }}
     >
-      {/* <CommonStack.Screen 
+      <CommonStack.Screen 
         name="ServiceDetails" 
         component={ServiceDetailsScreen} 
         options={{ title: 'Service Details' }} 
@@ -99,7 +99,7 @@ const CommonStackNavigator = ({ navigation, logoutHandler }) => {
         name="MyBookings" 
         component={MyBookingsScreen} 
         options={{ title: 'My Bookings' }} 
-      /> */}
+      />
     </CommonStack.Navigator>
   );
 };
@@ -135,9 +135,6 @@ const AlzheimersSmartNavigator = ({ logoutHandler }) => {
     Medication: MedicationScreen,
     HealthRecords: HealthRecordsScreen,
     MedicineAuth: MedicineAuthScreen,
-    ServiceDetails: ServiceDetailsScreen,
-    MyBookings: MyBookingsScreen,
-    
     
     // Safety group
     SafeZone: SafeZoneScreen,
@@ -160,7 +157,11 @@ const AlzheimersSmartNavigator = ({ logoutHandler }) => {
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text style={{ fontSize: 18 }}>Memory Journal Screen</Text>
       </View>
-    )
+    ),
+    
+    // Common screens
+    ServiceDetails: ServiceDetailsScreen,
+    MyBookings: MyBookingsScreen,
   };
 
   return (
@@ -210,7 +211,11 @@ const PregnancySmartNavigator = ({ logoutHandler }) => {
         <Text style={{ fontSize: 18 }}>Pregnancy Community</Text>
         <Text style={{ marginTop: 10, color: '#666' }}>Connect with other expecting mothers</Text>
       </View>
-    )
+    ),
+    
+    // Common screens that might be accessed from pregnancy flow
+    ServiceDetails: ServiceDetailsScreen,
+    MyBookings: MyBookingsScreen,
   };
 
   return (
