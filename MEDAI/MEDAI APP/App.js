@@ -26,6 +26,12 @@ import AlzheimersHomeScreen from './screens/alzheimers/HomeScreen';
 import MedicationScreen from './screens/alzheimers/MedicationScreen';
 import SafeZoneScreen from './screens/alzheimers/SafeZoneScreen';
 
+// Marketplace and Wallet Screens
+import MarketplaceScreen from './screens/marketplace/MarketplaceScreen';
+import ServiceDetailsScreen from './screens/marketplace/ServiceDetailsScreen';
+import MyBookingsScreen from './screens/marketplace/MyBookingsScreen';
+import WalletScreen from './screens/wallet/WalletScreen';
+
 // Pregnancy Screens
 import PregnancyHomeScreen from './screens/pregnancy/HomeScreen';
 import YogaScreen from './screens/pregnancy/YogaScreen';
@@ -36,6 +42,9 @@ import AppointmentScreen from './screens/pregnancy/AppointmentScreen';
 // Common Services
 import FallDetectionService from './services/FallDetectionService';
 import { setupNotifications } from './services/NotificationService';
+
+// Provider
+import { WalletProvider } from './services/walletService'; 
 
 const Tab = createBottomTabNavigator();
 const AlzheimersStack = createStackNavigator();
@@ -91,6 +100,26 @@ const AlzheimersNavigator = ({ navigation, logoutHandler }) => {
         name="SafeZone" 
         component={SafeZoneScreen} 
         options={{ title: 'Safe Zone Settings' }} 
+      />
+      <AlzheimersStack.Screen 
+        name="Marketplace" 
+        component={MarketplaceScreen} 
+        options={{ title: 'Healthcare Marketplace' }} 
+      />
+      <AlzheimersStack.Screen 
+        name="Wallet" 
+        component={WalletScreen} 
+        options={{ title: 'My Wallet' }} 
+      />
+      <AlzheimersStack.Screen 
+        name="ServiceDetails" 
+        component={ServiceDetailsScreen} 
+        options={{ title: 'Service Details' }} 
+      />
+      <AlzheimersStack.Screen 
+        name="MyBookings" 
+        component={MyBookingsScreen} 
+        options={{ title: 'My Bookings' }} 
       />
     </AlzheimersStack.Navigator>
   );
@@ -251,268 +280,290 @@ const App = () => {
   return (
     <SafeAreaProvider>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-      <NavigationContainer
-        ref={navigationRef}
-        onStateChange={onStateChange}
-      >
-        {!isLoggedIn ? (
-          <RootStack.Navigator screenOptions={{ headerShown: false }}>
-            <RootStack.Screen name="Login">
-              {props => <LoginScreen {...props} onLogin={handleLogin} />}
-            </RootStack.Screen>
-          </RootStack.Navigator>
-        ) : userType === 'alzheimers' ? (
-          <Tab.Navigator
-            screenOptions={({ route }) => ({
-              tabBarIcon: ({ focused, color, size }) => {
-                let iconName;
-                
-                if (route.name === 'Home') {
-                  iconName = focused ? 'home' : 'home-outline';
-                } else if (route.name === 'Medication') {
-                  iconName = focused ? 'medkit' : 'medkit-outline';
-                } else if (route.name === 'SafeZone') {
-                  iconName = focused ? 'location' : 'location-outline';
+      <WalletProvider>
+        <NavigationContainer
+          ref={navigationRef}
+          onStateChange={onStateChange}
+        >
+          {!isLoggedIn ? (
+            <RootStack.Navigator screenOptions={{ headerShown: false }}>
+              <RootStack.Screen name="Login">
+                {props => <LoginScreen {...props} onLogin={handleLogin} />}
+              </RootStack.Screen>
+            </RootStack.Navigator>
+          ) : userType === 'alzheimers' ? (
+            <Tab.Navigator
+              screenOptions={({ route }) => ({
+                tabBarIcon: ({ focused, color, size }) => {
+                  let iconName;
+                  
+                  if (route.name === 'Home') {
+                    iconName = focused ? 'home' : 'home-outline';
+                  } else if (route.name === 'Medication') {
+                    iconName = focused ? 'medkit' : 'medkit-outline';
+                  } else if (route.name === 'SafeZone') {
+                    iconName = focused ? 'location' : 'location-outline';
+                  } else if (route.name === 'Marketplace') {
+                    iconName = focused ? 'cart' : 'cart-outline';
+                  } else if (route.name === 'Wallet') {
+                    iconName = focused ? 'wallet' : 'wallet-outline';
+                  }
+                  
+                  return <Ionicons name={iconName} size={size} color={color} />;
+                },
+                tabBarActiveTintColor: '#6A5ACD',
+                tabBarInactiveTintColor: 'gray',
+                tabBarStyle: {
+                  elevation: 0,
+                  borderTopWidth: 1,
+                  borderTopColor: '#F0F0F0',
+                  height: 60,
+                  paddingBottom: 8,
+                  paddingTop: 8,
                 }
-                
-                return <Ionicons name={iconName} size={size} color={color} />;
-              },
-              tabBarActiveTintColor: '#6A5ACD',
-              tabBarInactiveTintColor: 'gray',
-              tabBarStyle: {
-                elevation: 0,
-                borderTopWidth: 1,
-                borderTopColor: '#F0F0F0',
-                height: 60,
-                paddingBottom: 8,
-                paddingTop: 8,
-              }
-            })}
-          >
-            <Tab.Screen 
-              name="Home" 
-              options={{ headerShown: false }}
+              })}
             >
-              {props => <AlzheimersNavigator {...props} logoutHandler={handleLogout} />}
-            </Tab.Screen>
-            <Tab.Screen 
-              name="Medication" 
-              component={MedicationScreen}
-              options={{
-                title: 'Medications',
-                headerRight: () => (
-                  <TouchableOpacity 
-                    style={{ marginRight: 15 }}
-                    onPress={() => {
-                      Alert.alert(
-                        "Logout",
-                        "Are you sure you want to logout?",
-                        [
-                          {
-                            text: "Cancel",
-                            style: "cancel"
-                          },
-                          { 
-                            text: "Logout", 
-                            onPress: () => handleLogout() 
-                          }
-                        ]
-                      );
-                    }}
-                  >
-                    <Ionicons name="log-out-outline" size={24} color="#6A5ACD" />
-                  </TouchableOpacity>
-                )
-              }}
-            />
-            <Tab.Screen 
-              name="SafeZone" 
-              component={SafeZoneScreen}
-              options={{
-                title: 'Safe Zone',
-                headerRight: () => (
-                  <TouchableOpacity 
-                    style={{ marginRight: 15 }}
-                    onPress={() => {
-                      Alert.alert(
-                        "Logout",
-                        "Are you sure you want to logout?",
-                        [
-                          {
-                            text: "Cancel",
-                            style: "cancel"
-                          },
-                          { 
-                            text: "Logout", 
-                            onPress: () => handleLogout() 
-                          }
-                        ]
-                      );
-                    }}
-                  >
-                    <Ionicons name="log-out-outline" size={24} color="#6A5ACD" />
-                  </TouchableOpacity>
-                )
-              }}
-            />
-          </Tab.Navigator>
-        ) : (
-          <Tab.Navigator
-            screenOptions={({ route }) => ({
-              tabBarIcon: ({ focused, color, size }) => {
-                let iconName;
-                
-                if (route.name === 'Home') {
-                  iconName = focused ? 'home' : 'home-outline';
-                } else if (route.name === 'Yoga') {
-                  iconName = focused ? 'fitness' : 'fitness-outline';
-                } else if (route.name === 'Chatbot') {
-                  iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-                } else if (route.name === 'Diet') {
-                  iconName = focused ? 'nutrition' : 'nutrition-outline';
-                } else if (route.name === 'Appointments') {
-                  iconName = focused ? 'calendar' : 'calendar-outline';
+              <Tab.Screen 
+                name="Home" 
+                options={{ headerShown: false }}
+              >
+                {props => <AlzheimersNavigator {...props} logoutHandler={handleLogout} />}
+              </Tab.Screen>
+              <Tab.Screen 
+                name="Medication" 
+                component={MedicationScreen}
+                options={{
+                  title: 'Medications',
+                  headerRight: () => (
+                    <TouchableOpacity 
+                      style={{ marginRight: 15 }}
+                      onPress={() => {
+                        Alert.alert(
+                          "Logout",
+                          "Are you sure you want to logout?",
+                          [
+                            {
+                              text: "Cancel",
+                              style: "cancel"
+                            },
+                            { 
+                              text: "Logout", 
+                              onPress: () => handleLogout() 
+                            }
+                          ]
+                        );
+                      }}
+                    >
+                      <Ionicons name="log-out-outline" size={24} color="#6A5ACD" />
+                    </TouchableOpacity>
+                  )
+                }}
+              />
+              <Tab.Screen 
+                name="Marketplace" 
+                component={MarketplaceScreen}
+                options={{
+                  title: 'Marketplace',
+                  headerShown: false,
+                }}
+              />
+              <Tab.Screen 
+                name="Wallet" 
+                component={WalletScreen}
+                options={{
+                  title: 'My Wallet',
+                  headerShown: false,
+                }}
+              />
+              <Tab.Screen 
+                name="SafeZone" 
+                component={SafeZoneScreen}
+                options={{
+                  title: 'Safe Zone',
+                  headerRight: () => (
+                    <TouchableOpacity 
+                      style={{ marginRight: 15 }}
+                      onPress={() => {
+                        Alert.alert(
+                          "Logout",
+                          "Are you sure you want to logout?",
+                          [
+                            {
+                              text: "Cancel",
+                              style: "cancel"
+                            },
+                            { 
+                              text: "Logout", 
+                              onPress: () => handleLogout() 
+                            }
+                          ]
+                        );
+                      }}
+                    >
+                      <Ionicons name="log-out-outline" size={24} color="#6A5ACD" />
+                    </TouchableOpacity>
+                  )
+                }}
+              />
+            </Tab.Navigator>
+          ) : (
+            <Tab.Navigator
+              screenOptions={({ route }) => ({
+                tabBarIcon: ({ focused, color, size }) => {
+                  let iconName;
+                  
+                  if (route.name === 'Home') {
+                    iconName = focused ? 'home' : 'home-outline';
+                  } else if (route.name === 'Yoga') {
+                    iconName = focused ? 'fitness' : 'fitness-outline';
+                  } else if (route.name === 'Chatbot') {
+                    iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+                  } else if (route.name === 'Diet') {
+                    iconName = focused ? 'nutrition' : 'nutrition-outline';
+                  } else if (route.name === 'Appointments') {
+                    iconName = focused ? 'calendar' : 'calendar-outline';
+                  }
+                  
+                  return <Ionicons name={iconName} size={size} color={color} />;
+                },
+                tabBarActiveTintColor: '#FF69B4',
+                tabBarInactiveTintColor: 'gray',
+                tabBarStyle: {
+                  elevation: 0,
+                  borderTopWidth: 1,
+                  borderTopColor: '#F0F0F0',
+                  height: 60,
+                  paddingBottom: 8,
+                  paddingTop: 8,
                 }
-                
-                return <Ionicons name={iconName} size={size} color={color} />;
-              },
-              tabBarActiveTintColor: '#FF69B4',
-              tabBarInactiveTintColor: 'gray',
-              tabBarStyle: {
-                elevation: 0,
-                borderTopWidth: 1,
-                borderTopColor: '#F0F0F0',
-                height: 60,
-                paddingBottom: 8,
-                paddingTop: 8,
-              }
-            })}
-          >
-            <Tab.Screen 
-              name="Home" 
-              options={{ headerShown: false }}
+              })}
             >
-              {props => <PregnancyNavigator {...props} logoutHandler={handleLogout} />}
-            </Tab.Screen>
-            <Tab.Screen 
-              name="Yoga" 
-              component={YogaScreen}
-              options={{
-                headerRight: () => (
-                  <TouchableOpacity 
-                    style={{ marginRight: 15 }}
-                    onPress={() => {
-                      Alert.alert(
-                        "Logout",
-                        "Are you sure you want to logout?",
-                        [
-                          {
-                            text: "Cancel",
-                            style: "cancel"
-                          },
-                          { 
-                            text: "Logout", 
-                            onPress: () => handleLogout() 
-                          }
-                        ]
-                      );
-                    }}
-                  >
-                    <Ionicons name="log-out-outline" size={24} color="#FF69B4" />
-                  </TouchableOpacity>
-                )
-              }}
-            />
-            <Tab.Screen 
-              name="Chatbot" 
-              component={ChatbotScreen}
-              options={{
-                headerRight: () => (
-                  <TouchableOpacity 
-                    style={{ marginRight: 15 }}
-                    onPress={() => {
-                      Alert.alert(
-                        "Logout",
-                        "Are you sure you want to logout?",
-                        [
-                          {
-                            text: "Cancel",
-                            style: "cancel"
-                          },
-                          { 
-                            text: "Logout", 
-                            onPress: () => handleLogout() 
-                          }
-                        ]
-                      );
-                    }}
-                  >
-                    <Ionicons name="log-out-outline" size={24} color="#FF69B4" />
-                  </TouchableOpacity>
-                )
-              }}
-            />
-            <Tab.Screen 
-              name="Diet" 
-              component={DietScreen}
-              options={{
-                headerRight: () => (
-                  <TouchableOpacity 
-                    style={{ marginRight: 15 }}
-                    onPress={() => {
-                      Alert.alert(
-                        "Logout",
-                        "Are you sure you want to logout?",
-                        [
-                          {
-                            text: "Cancel",
-                            style: "cancel"
-                          },
-                          { 
-                            text: "Logout", 
-                            onPress: () => handleLogout() 
-                          }
-                        ]
-                      );
-                    }}
-                  >
-                    <Ionicons name="log-out-outline" size={24} color="#FF69B4" />
-                  </TouchableOpacity>
-                )
-              }}
-            />
-            <Tab.Screen 
-              name="Appointments" 
-              component={AppointmentScreen}
-              options={{
-                headerRight: () => (
-                  <TouchableOpacity 
-                    style={{ marginRight: 15 }}
-                    onPress={() => {
-                      Alert.alert(
-                        "Logout",
-                        "Are you sure you want to logout?",
-                        [
-                          {
-                            text: "Cancel",
-                            style: "cancel"
-                          },
-                          { 
-                            text: "Logout", 
-                            onPress: () => handleLogout() 
-                          }
-                        ]
-                      );
-                    }}
-                  >
-                    <Ionicons name="log-out-outline" size={24} color="#FF69B4" />
-                  </TouchableOpacity>
-                )
-              }}
-            />
-          </Tab.Navigator>
-        )}
-      </NavigationContainer>
+              <Tab.Screen 
+                name="Home" 
+                options={{ headerShown: false }}
+              >
+                {props => <PregnancyNavigator {...props} logoutHandler={handleLogout} />}
+              </Tab.Screen>
+              <Tab.Screen 
+                name="Yoga" 
+                component={YogaScreen}
+                options={{
+                  headerRight: () => (
+                    <TouchableOpacity 
+                      style={{ marginRight: 15 }}
+                      onPress={() => {
+                        Alert.alert(
+                          "Logout",
+                          "Are you sure you want to logout?",
+                          [
+                            {
+                              text: "Cancel",
+                              style: "cancel"
+                            },
+                            { 
+                              text: "Logout", 
+                              onPress: () => handleLogout() 
+                            }
+                          ]
+                        );
+                      }}
+                    >
+                      <Ionicons name="log-out-outline" size={24} color="#FF69B4" />
+                    </TouchableOpacity>
+                  )
+                }}
+              />
+              <Tab.Screen 
+                name="Chatbot" 
+                component={ChatbotScreen}
+                options={{
+                  headerRight: () => (
+                    <TouchableOpacity 
+                      style={{ marginRight: 15 }}
+                      onPress={() => {
+                        Alert.alert(
+                          "Logout",
+                          "Are you sure you want to logout?",
+                          [
+                            {
+                              text: "Cancel",
+                              style: "cancel"
+                            },
+                            { 
+                              text: "Logout", 
+                              onPress: () => handleLogout() 
+                            }
+                          ]
+                        );
+                      }}
+                    >
+                      <Ionicons name="log-out-outline" size={24} color="#FF69B4" />
+                    </TouchableOpacity>
+                  )
+                }}
+              />
+              <Tab.Screen 
+                name="Diet" 
+                component={DietScreen}
+                options={{
+                  headerRight: () => (
+                    <TouchableOpacity 
+                      style={{ marginRight: 15 }}
+                      onPress={() => {
+                        Alert.alert(
+                          "Logout",
+                          "Are you sure you want to logout?",
+                          [
+                            {
+                              text: "Cancel",
+                              style: "cancel"
+                            },
+                            { 
+                              text: "Logout", 
+                              onPress: () => handleLogout() 
+                            }
+                          ]
+                        );
+                      }}
+                    >
+                      <Ionicons name="log-out-outline" size={24} color="#FF69B4" />
+                    </TouchableOpacity>
+                  )
+                }}
+              />
+              <Tab.Screen 
+                name="Appointments" 
+                component={AppointmentScreen}
+                options={{
+                  headerRight: () => (
+                    <TouchableOpacity 
+                      style={{ marginRight: 15 }}
+                      onPress={() => {
+                        Alert.alert(
+                          "Logout",
+                          "Are you sure you want to logout?",
+                          [
+                            {
+                              text: "Cancel",
+                              style: "cancel"
+                            },
+                            { 
+                              text: "Logout", 
+                              onPress: () => handleLogout() 
+                            }
+                          ]
+                        );
+                      }}
+                    >
+                      <Ionicons name="log-out-outline" size={24} color="#FF69B4" />
+                    </TouchableOpacity>
+                  )
+                }}
+              />
+            </Tab.Navigator>
+          )}
+        </NavigationContainer>
+      </WalletProvider>
     </SafeAreaProvider>
   );
 };
