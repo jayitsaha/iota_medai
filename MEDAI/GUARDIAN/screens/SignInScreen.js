@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -9,23 +9,50 @@ import {
   StatusBar,
   Alert,
   ScrollView,
-  Pressable,
-  Image
+  Modal,
+  Image,
+  Dimensions
 } from 'react-native';
 import * as Animatable from 'react-native-animatable';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import Feather from 'react-native-vector-icons/Feather';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import PatientDashboardScreen from "./PatientDashboardScreen";
 
 import {useTheme} from 'react-native-paper';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import axios from 'axios';
+// Profile options with navigation routes
+const PROFILES = {
+  HOSPITAL: {
+    displayName: 'Hospital Admin',
+    icon: 'hospital-building',
+    color: '#4A6FA5',
+    route: 'HospitalLogin'
+  },
+  HEALTHCARE_PROVIDER: {
+    displayName: 'Doctor',
+    icon: 'doctor',
+    color: '#2A9D8F',
+    route: 'DoctorLogin'
+  },
+  PHARMACY: {
+    displayName: 'Pharmacy',
+    icon: 'pharmacy',
+    color: '#E57373',
+    route: 'PharmacyLogin'
+  },
+  PATIENT: {
+    displayName: 'GUARDIAN',
+    icon: 'account',
+    color: '#64748B',
+    route: 'SignInScreen'
+  }
+};
 
 const SignInScreen = ({route, navigation}) => {
-
   const [data, setData] = React.useState({
     username: '',
     password: '',
@@ -35,6 +62,7 @@ const SignInScreen = ({route, navigation}) => {
   });
   const {colors} = useTheme();
   const [checked, setChecked] = React.useState(true);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
 
   const storeData = async (key, input) => {
     try {
@@ -56,22 +84,8 @@ const SignInScreen = ({route, navigation}) => {
           ...data,
           username: username,
           password: password,
+          check_textInputChange: username.length > 0
         });
-
-        //This commented out section allows auto login
-        /*let obj = createObj(username, password);
-
-        console.log("OBJ = " + JSON.stringify(obj));
-
-        sendLoginDetailsToSever(obj).then((value) => {
-          if (value) {  //If it successfully communicated with the server
-            //First save login details to memory
-            navigation.navigate('Home');
-
-          } else {
-            console.log("failed to auto-login");
-          }
-        });*/
       }
     } catch (e) {
       console.log('error ', e);
@@ -83,8 +97,11 @@ const SignInScreen = ({route, navigation}) => {
     getData();
   }, []);
 
-
-
+  // Navigate to the dedicated login page for the selected profile
+  const navigateToProfileLogin = (profile) => {
+    setProfileModalVisible(false);
+    navigation.navigate(profile.route);
+  };
 
   //The checkbox mechanism
   const CheckBox = ({
@@ -114,7 +131,7 @@ const SignInScreen = ({route, navigation}) => {
     setData({
       ...data,
       username: val,
-      check_textInputChange: true,
+      check_textInputChange: val.length > 0,
     });
   };
 
@@ -156,93 +173,113 @@ const SignInScreen = ({route, navigation}) => {
     }
   };
 
-  //Ensure the user has entered both a username and password to continue
-  const checkData = () => {
-    if (data['username'] != '' && data['password'] != '') {
-      return true;
-    }
-    return false;
-  };
-
-  const createObj = (optionalusername, optionalPassword) => {
-    if (optionalusername && optionalPassword) {
-      return {
-        username: optionalusername,
-        password: optionalPassword,
-      };
-    } else {
-      if (!data['isValidPassword']) {
-        return false;
+  const handleLogin = () => {
+    // Original login logic
+    if (data.username && data.password) {
+      if (checked) {
+        storeData('username', data.username);
+        storeData('password', data.password);
       } else {
-        return {
-          username: data['username'],
-          password: data['password'],
-        };
+        storeData('username', '');
+        storeData('password', '');
       }
+      
+      // Example profile-specific logic
+      if(data.username == "jayit") {
+        navigation.navigate('PoliceManDashboard', {
+          username: 'username',
+          jwt: 'token',
+        });
+      } else if(data.username == "ravi") {
+        navigation.navigate('MainApp', {
+          username: 'username',
+          jwt: 'token',
+        });
+      } else if(data.username == "cleaner") {
+        navigation.navigate('CleanerDashboard', {
+          username: 'username',
+          jwt: 'token',
+        });
+      } else if(data.username == "fireman") {
+        navigation.navigate('FiremanDashboard', {
+          username: 'username',
+          jwt: 'token',
+        });
+      } else {
+        Alert.alert('Invalid credentials', 'Please try again or select a profile type.');
+      }
+    } else {
+      Alert.alert('Please enter both username and password to login');
     }
   };
 
-  //Axios POST Function
-  const sendLoginDetailsToSever = async optionalObj => {
-
-  console.log("HI THERE LOGGIN IN")
-//    let obj = optionalObj;
-//    if (!optionalObj) obj = createObj();
-//    if (!obj) return false;
-//
-//    console.log('Object being set to backend ' + JSON.stringify(obj));
-//
-//    let returnValue;
-//    await axios({
-//      method: 'post',
-//      url: APP_CONFIG.WEB_HOST + '/api/loginData/login',
-//      data: obj,
-//      headers: {'Content-Type': 'application/json'},
-//    })
-//      .then(function (response) {
-//        //handle success
-//        console.log('success, status = ' + response['status']);
-//
-//        if (response['data'] == 'NoData') {
-//          console.log('NO DATA being returned');
-//          returnValue = false;
-//        } else {
-//          console.log('new reponse is ' + JSON.stringify(response['data']));
-//          global.username = response['data']['username'];
-//          global.jwtToken = response['data']['jwt'];
-//          global.accountType = response['data']['accountType'];
-//          returnValue = true;
-//        }
-//      })
-//      .catch(function (response) {
-//        //handle error
-//        console.log('Error');
-//        console.log(JSON.stringify(response));
-//        returnValue = false;
-//      });
-//    return returnValue;
+  // Profile Switcher Modal
+  const renderProfileModal = () => {
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={profileModalVisible}
+        onRequestClose={() => setProfileModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Animatable.View 
+            animation="fadeInUpBig"
+            style={styles.modalContent}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Profile Type</Text>
+              <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
+                <Feather name="x" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.profileList}>
+              {Object.values(PROFILES).map((profile, index) => (
+                <TouchableOpacity 
+                  key={index} 
+                  style={styles.profileItem}
+                  onPress={() => navigateToProfileLogin(profile)}
+                >
+                  <View style={[styles.profileIconContainer, { backgroundColor: profile.color + '20' }]}>
+                    <MaterialCommunityIcons name={profile.icon} size={32} color={profile.color} />
+                  </View>
+                  <View style={styles.profileInfo}>
+                    <Text style={styles.profileName}>{profile.displayName}</Text>
+                    <Text style={styles.profileEmail}>Login as {profile.displayName}</Text>
+                  </View>
+                  <Feather name="chevron-right" size={20} color="#CBD5E1" />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setProfileModalVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </Animatable.View>
+        </View>
+      </Modal>
+    );
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor="#59439C" barStyle="light-content" hidden />
+      <StatusBar backgroundColor="#90A4AE" barStyle="light-content" hidden />
       <View style={styles.header}>
-        {/* <Text style={styles.text_header}>WELCOME TO GUARDIAN</Text> */}
         <Image
-              style={{
-                width: 250,
-                height: 250,
-                resizeMode: 'contain',
-                justifyContent: "center",
-                alignSelf:"center",
-              }}
-              source={require("../assets/introduction_animation/app_logo.png")}
-            />
+          style={{
+            width: 250,
+            height: 250,
+            resizeMode: 'contain',
+            justifyContent: "center",
+            alignSelf:"center",
+          }}
+          source={require("../assets/introduction_animation/app_logo.png")}
+        />
       </View>
-
-
-
-        
 
       <Animatable.View
         animation="fadeInUpBig"
@@ -277,7 +314,6 @@ const SignInScreen = ({route, navigation}) => {
             ]}
             autoCapitalize="none"
             onChangeText={val => textInputChange(val)}
-            //onEndEditing={e => handleValidUser(e.nativeEvent.text)}
           />
           {data.check_textInputChange ? (
             <Animatable.View animation="bounceIn">
@@ -285,11 +321,6 @@ const SignInScreen = ({route, navigation}) => {
             </Animatable.View>
           ) : null}
         </View>
-        {/*data.isValidUser ? null : (
-          <Animatable.View animation="fadeInLeft" duration={500}>
-            <Text style={styles.errorMsg}>Username is of wrong format.</Text>
-          </Animatable.View>
-        )*/}
 
         <Text
           style={[
@@ -334,7 +365,6 @@ const SignInScreen = ({route, navigation}) => {
           </Animatable.View>
         )}
 
-        {/*Needs to be built*/}
         <TouchableOpacity>
           <Text style={{color: '#2F4858', marginTop: 15}}>
             Forgot password?
@@ -360,66 +390,7 @@ const SignInScreen = ({route, navigation}) => {
                 backgroundColor: '#90A4AE',
               },
             ]}
-            onPress={async () => {
-              //if (!loginInfo) saveData("loginDetails", data);
-              if (1==1) {
-                sendLoginDetailsToSever().then(value => {
-                  console.log('Value = ' + value);
-                  if (1==1) {
-                    //If it successfully communicated with the server
-
-                    if (checked) {
-                      //Save login details to memory
-                      storeData('username', data['username']);
-                      storeData('password', data['password']);
-                    } else {
-                      //Delete it from memory if it exists
-                      storeData('username', '');
-                      storeData('password', '');
-                    }
-
-
-                    if(data['username'] == "jayit"){
-                      navigation.navigate('PoliceManDashboard', {
-                        username: 'username',
-                        jwt: 'token',
-                      });
-                    }
-
-                    if(data['username'] == "ravi"){
-                      navigation.navigate('MainApp', {
-                        username: 'username',
-                        jwt: 'token',
-                      });
-                    }
-
-                    if(data['username'] == "cleaner"){
-                      navigation.navigate('CleanerDashboard', {
-                        username: 'username',
-                        jwt: 'token',
-                      });
-                    }
-
-                    if(data['username'] == "fireman"){
-                      navigation.navigate('FiremanDashboard', {
-                        username: 'username',
-                        jwt: 'token',
-                      });
-                    }
-
-                    
-                  } else {
-                    Alert.alert(
-                      'Invalid username or password, please try again',
-                    );
-                  }
-                });
-              } else {
-                Alert.alert(
-                  'Please enter both the username, and password to log in',
-                );
-              }
-            }}>
+            onPress={handleLogin}>
             <View>
               <Text
                 style={[
@@ -433,8 +404,33 @@ const SignInScreen = ({route, navigation}) => {
             </View>
           </TouchableOpacity>
 
-
           <TouchableOpacity
+            onPress={() => setProfileModalVisible(true)}
+            style={[
+              styles.signIn,
+              {
+                borderColor: '#4A6FA5',
+                backgroundColor: '#E3F2FD',
+                borderWidth: 1,
+                marginTop: 15,
+              },
+            ]}>
+            <View style={styles.switchProfileButton}>
+              <MaterialIcons name="switch-account" size={24} color="#4A6FA5" />
+              <Text
+                style={[
+                  styles.textSign,
+                  {
+                    color: '#4A6FA5',
+                    marginLeft: 10
+                  },
+                ]}>
+                Switch Profile
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* <TouchableOpacity
             onPress={() => navigation.navigate('HospitalLogin')}
             style={[
               styles.signIn,
@@ -453,14 +449,19 @@ const SignInScreen = ({route, navigation}) => {
               ]}>
               Sign in as Hospital Admin
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </Animatable.View>
+
+      {/* Profile Switcher Modal */}
+      {renderProfileModal()}
     </View>
   );
 };
 
 export default SignInScreen;
+
+const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
@@ -535,53 +536,78 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  buttonGPlusStyle: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: '#dc4e41',
-      borderWidth: 0.5,
-      borderColor: '#fff',
-      height: 40,
-      borderRadius: 5,
-      margin: 5,
-    },
-    buttonFacebookStyle: {
-    width: '100%',
-        height: 60,
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: '#fff',
-      borderWidth: 0.5,
-      height: 40,
-      borderRadius: 5,
-      margin: 5,
-      borderColor: '#2F4858',
-      borderWidth: 1,
-      marginTop: 15,
-      borderRadius: 10,
-      padding: 10
-
-
-    },
-    buttonImageIconStyle: {
-      padding: 10,
-      margin: 5,
-      height: 25,
-      width: 25,
-      resizeMode: 'stretch',
-
-    },
-    buttonTextStyle: {
-      color: '#2F4858',
-      marginBottom: 4,
-      marginLeft: 10,
-      fontSize: 18,
-      fontWeight: 'bold',
-      marginLeft: 50
-    },
-    buttonIconSeparatorStyle: {
-      backgroundColor: '#fff',
-      width: 1,
-      height: 40,
-      }
+  switchProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#334155',
+  },
+  profileList: {
+    marginBottom: 20,
+  },
+  profileItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  profileIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 4,
+  },
+  profileEmail: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  closeButton: {
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  closeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748B',
+  },
 });

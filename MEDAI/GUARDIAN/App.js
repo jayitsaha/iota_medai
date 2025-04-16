@@ -28,6 +28,19 @@ import HospitalDashboardScreen from './screens/HospitalDashboardScreen';
 import OrganDonorRegistryScreen from './screens/OrganDonorRegistryScreen';
 import AmbulanceManagementScreen from './screens/AmbulanceManagementScreen';
 
+
+import DoctorLoginScreen from './screens/DoctorLoginScreen';
+import PharmacyLoginScreen from './screens/PharmacyLoginScreen';
+import HealthcareProviderDashboardScreen from './screens/DoctorDashboard';
+import AddHealthcareRecordScreen from './screens/AddHealthcareRecordScreen';
+import HealthcareListScreen from './screens/HealthcareListScreen';
+// import AddHealthcareRecordScreen from './screens/AddHealthcareRecordScreen';
+
+import PharmacyDashboardScreen from './screens/PharmacyDashboardScreen';
+import VerifyMedicineScreen from './screens/VerifyMedicineScreen';
+import MedicineListScreen from './screens/MedicineListScreen';
+import RegisterMedicineScreen from './screens/RegisterMedicineScreen';
+
 const Stack = createStackNavigator();
 
 export default function App() {
@@ -49,6 +62,19 @@ export default function App() {
         <Stack.Screen name="HospitalDashboard" component={HospitalDashboardScreen} />
         <Stack.Screen name="OrganDonorRegistry" component={OrganDonorRegistryScreen} />
         <Stack.Screen name="AmbulanceManagement" component={AmbulanceManagementScreen} />
+        <Stack.Screen name="DoctorLogin" component={DoctorLoginScreen} />
+        <Stack.Screen name="PharmacyLogin" component={PharmacyLoginScreen} />
+        <Stack.Screen name="DoctorDashboard" component={HealthcareProviderDashboardScreen} />
+        <Stack.Screen name='AddHealthcareRecordScreen' component={AddHealthcareRecordScreen} />
+        <Stack.Screen name='HealthcareListScreen' component={HealthcareListScreen} />
+        <Stack.Screen name='PharmacyDashboardScreen' component={PharmacyDashboardScreen} />
+        <Stack.Screen name='VerifyMedicineScreen' component={VerifyMedicineScreen} />
+        <Stack.Screen name='MedicineListScreen' component={MedicineListScreen} />
+        <Stack.Screen name='RegisterMedicineScreen' component={RegisterMedicineScreen} />
+
+
+        
+        
       </Stack.Navigator>
     </NavigationContainer>
   );

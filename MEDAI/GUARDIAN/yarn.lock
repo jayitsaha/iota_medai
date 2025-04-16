@@ -3438,6 +3438,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-native-community/datetimepicker@npm:3.5.2":
+  version: 3.5.2
+  resolution: "@react-native-community/datetimepicker@npm:3.5.2"
+  dependencies:
+    invariant: ^2.2.4
+  checksum: 8f0d3bc7014b17c696a415565c6fc591591b29ba5a438f2c1692a96ffc185693266eb950229ed3e9bf6b035d61a720ee402cbe9750d5bef81fd19e7647a24229
+  languageName: node
+  linkType: hard
+
 "@react-native-community/geolocation@npm:^2.0.2":
   version: 2.1.0
   resolution: "@react-native-community/geolocation@npm:2.1.0"
@@ -13095,6 +13104,7 @@ __metadata:
     "@react-native-async-storage/async-storage": ~1.15.0
     "@react-native-community/async-storage": 1.12.1
     "@react-native-community/cli-platform-android": ^8.0.2
+    "@react-native-community/datetimepicker": 3.5.2
     "@react-native-community/geolocation": ^2.0.2
     "@react-native-community/masked-view": 0.1.10
     "@react-native-community/slider": ^3.0.3
