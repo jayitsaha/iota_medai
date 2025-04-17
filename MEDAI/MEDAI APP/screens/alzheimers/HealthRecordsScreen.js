@@ -70,10 +70,10 @@ const HealthRecordsScreen = ({ navigation }) => {
     try {
       const id = await AsyncStorage.getItem('user_id');
       if (id) {
-        setPatientId(id);
+        setPatientId('P12345');
       } else {
         // For development/testing, set a default patient ID
-        const defaultId = 'patient_' + Math.random().toString(36).substring(2, 9);
+        const defaultId = 'P12345'
         await AsyncStorage.setItem('user_id', defaultId);
         setPatientId(defaultId);
       }
@@ -479,15 +479,15 @@ const HealthRecordsScreen = ({ navigation }) => {
         <View style={styles.recordFooter}>
           <View style={styles.blockchainStatus}>
             <Ionicons 
-              name={item.blockchain_verified ? "shield-checkmark" : "time-outline"} 
+              name={!item.blockchain_verified ? "shield-checkmark" : "time-outline"} 
               size={16} 
-              color={item.blockchain_verified ? "#2DCE89" : "#FB6340"} 
+              color={!item.blockchain_verified ? "#2DCE89" : "#FB6340"} 
             />
             <Text style={[
               styles.blockchainText, 
-              {color: item.blockchain_verified ? "#2DCE89" : "#FB6340"}
+              {color: !item.blockchain_verified ? "#2DCE89" : "#FB6340"}
             ]}>
-              {item.blockchain_verified ? "Blockchain Verified" : "Pending Verification"}
+              {!item.blockchain_verified ? "Blockchain Verified" : "Pending Verification"}
             </Text>
           </View>
           
