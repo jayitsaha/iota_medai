@@ -132,7 +132,8 @@ def ocr_prescription():
             'data': {
                 'id': prescription_id,
                 'date': prescription_data.get('date') or time.strftime('%Y-%m-%d'),
-                'medicines': prescription_data.get('medicines', [])
+                'medicines': prescription_data.get('medicines', []),
+                'serial_number': prescription_data.get('serial_number')
             }
         })
     except Exception as e:
@@ -1606,7 +1607,75 @@ def verify_medicine():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
+PRESCRIPTIONS_PATH = '/Users/j0s0yz3/Downloads/iota/iota/server/healthcare_records.json'
 
+@app.route('/api/verify-prescription-blockchain', methods=['POST'])
+def verify_prescription():
+    try:
+        # Get serial number from request
+        data = request.get_json()
+        if not data or 'serial_number' not in data:
+            return jsonify({'error': 'Prescription serial number is required'}), 400
+        
+        requested_serial_number = data['serial_number']
+        
+        # Check if the healthcare records file exists
+        if not os.path.exists(PRESCRIPTIONS_PATH):
+            return jsonify({'error': 'Healthcare records file not found'}), 500
+        
+        # Read and parse the JSON file
+        with open(PRESCRIPTIONS_PATH, 'r') as file:
+            healthcare_records = json.load(file)
+        
+        # Find prescription records
+        prescription_records = [record for record in healthcare_records 
+                               if record.get('record_type') == 'Prescription' or 
+                                  record.get('record_type') == 'prescription']
+        
+        # Look for matching serial number in the details field
+        matching_record = None
+        
+        for record in prescription_records:
+            try:
+                # Parse the details JSON string
+                details = json.loads(record.get('details', '{}'))
+                
+                # Check if serial_number matches
+                if details.get('serial_number') == requested_serial_number:
+                    matching_record = record
+                    break
+            except json.JSONDecodeError:
+                # Skip records with invalid JSON in details
+                continue
+        
+        if matching_record:
+            # Check the status of the prescription
+            if matching_record.get('status') == 'Active':
+                return jsonify({
+                    'verified': True,
+                    'message': 'Prescription has been verified and is valid.',
+                    'prescription_details': {
+                        'record_id': matching_record.get('record_id'),
+                        'provider': matching_record.get('provider'),
+                        'date': matching_record.get('date'),
+                        'details': json.loads(matching_record.get('details', '{}'))
+                    }
+                })
+            else:
+                return jsonify({
+                    'verified': False,
+                    'message': f"This prescription is marked as '{matching_record.get('status')}' and cannot be processed."
+                })
+        else:
+            # If the prescription is not found
+            return jsonify({
+                'verified': False,
+                'message': 'This prescription is not registered in our system. It may be invalid or forged.'
+            })
+            
+    except Exception as e:
+        print(f"Error in verify_prescription: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     # Run the Flask app

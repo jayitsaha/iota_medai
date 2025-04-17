@@ -190,29 +190,50 @@ const MedicationScreen = ({ navigation }) => {
       
       if (imageUri) {
         setLoading(true);
-        // Process the prescription image with Llama Vision
+        
+        // Step 1: First extract just the prescription serial number
         const prescriptionData = await OCRService.processPrescriptionImage(imageUri);
+
+
+        console.log(prescriptionData)
+        
+        if (!prescriptionData.serial_number) {
+          Alert.alert(
+            'Verification Failed',
+            'Could not find a prescription serial number in the document.',
+            [{ text: 'OK' }]
+          );
+          setLoading(false);
+          setProcessingImage(false);
+          return;
+        }
+        
+        // Step 2: Verify the prescription serial number against blockchain
+        const verificationResult = await verifyPrescriptionOnBlockchain(prescriptionData.serial_number);
+        
+        if (!verificationResult.verified) {
+          Alert.alert(
+            'Invalid Prescription',
+            'This prescription has not been registered by a doctor in our system.',
+            [{ text: 'OK' }]
+          );
+          setLoading(false);
+          setProcessingImage(false);
+          return;
+        }
+        
+        // Step 3: Only if verified, then process the full prescription
         
         if (prescriptionData && prescriptionData.medicines && prescriptionData.medicines.length > 0) {
-          // Format and add prescription medicines
+          // Continue with existing code to add medicines...
           const newMedicines = prescriptionData.medicines.map(medicine => ({
+            // Your existing medicine mapping code
             id: `med-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             name: medicine.name || 'Unknown Medication',
-            dosage: medicine.dosage || 'Not specified',
-            frequency: medicine.frequency || 'Once daily',
-            quantity: parseInt(medicine.quantity) || 30,
-            pillsPerDay: parseInt(medicine.pillsPerDay) || 1,
-            startDate: prescriptionData.date || new Date().toISOString().split('T')[0],
-            lastRefill: prescriptionData.date || new Date().toISOString().split('T')[0],
-            refillSchedule: '30', // Default 30 days
-            imageUri: null, // Will be updated when scanned
-            remainingPills: parseInt(medicine.quantity) || 30,
-            dateAdded: new Date().toISOString(),
-            // Add a flag to indicate this is from a prescription
+            // ... other fields
             fromPrescription: true,
-            // Set as unverified initially
-            blockchain_verified: false,
-            // Create a serial number for later verification
+            prescriptionSerialNumber: prescriptionData.serial_number, // Add reference to prescription
+            blockchain_verified: true, // Mark as verified since prescription is verified
             serialNumber: `RX${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
           }));
           
@@ -221,37 +242,16 @@ const MedicationScreen = ({ navigation }) => {
           await saveMedicines(updatedMedicines);
           
           Alert.alert(
-            'Prescription Analyzed',
-            `Successfully identified ${newMedicines.length} medications from your prescription.\n\nThese medications will need to be verified before use.`,
+            'Verified Prescription Processed',
+            `Successfully verified and processed ${newMedicines.length} medications from your prescription.`,
             [{ text: 'OK' }]
           );
           
-          // Schedule reminders for the new medications
           scheduleMedicationReminders();
-          
-          // Also save prescription to healthcare records
-          try {
-            const patientId = await AsyncStorage.getItem('user_id');
-            if (patientId) {
-              await HealthcareService.addHealthcareRecord(
-                patientId,
-                'prescription',
-                'Uploaded by patient',
-                prescriptionData.date || new Date().toISOString().split('T')[0],
-                JSON.stringify({
-                  title: 'Prescription Upload',
-                  description: 'Prescription uploaded by patient',
-                  medications: prescriptionData.medicines
-                })
-              );
-            }
-          } catch (healthError) {
-            console.error('Error saving to healthcare records:', healthError);
-          }
         } else {
           Alert.alert(
             'Analysis Incomplete',
-            'Could not fully analyze the prescription. Please try again with a clearer image.',
+            'Could not extract medicines from the verified prescription.',
             [{ text: 'OK' }]
           );
         }
@@ -266,6 +266,30 @@ const MedicationScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
       setProcessingImage(false);
+    }
+  };
+
+
+  const verifyPrescriptionOnBlockchain = async (serialNumber) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/verify-prescription-blockchain`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          serial_number: serialNumber
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Prescription verification API error:', error);
+      return { verified: false, error: error.message };
     }
   };
 

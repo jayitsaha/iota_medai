@@ -45,6 +45,7 @@ const AddHealthcareRecordScreen = ({ navigation, route }) => {
   const [frequency, setFrequency] = useState('');
   const [duration, setDuration] = useState('');
   const [notes, setNotes] = useState('');
+  const [serial_number, set_serial_number] = useState('');
   
   // Blood test-specific fields
   const [testName, setTestName] = useState('');
@@ -117,6 +118,7 @@ const AddHealthcareRecordScreen = ({ navigation, route }) => {
     switch(recordType) {
       case 'Prescription':
         return {
+          serial_number,
           medication,
           dosage,
           frequency,
@@ -264,6 +266,18 @@ const AddHealthcareRecordScreen = ({ navigation, route }) => {
       case 'Prescription':
         return (
           <View>
+
+
+            <TextInput
+              label="Serial Number *"
+              value={serial_number}
+              onChangeText={set_serial_number}
+              mode="outlined"
+              style={styles.input}
+            />
+
+
+
             <TextInput
               label="Medication Name *"
               value={medication}

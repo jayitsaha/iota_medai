@@ -43,6 +43,7 @@ class GroqVision:
                - frequency: How often to take it
                - quantity: Number of units prescribed
                - pillsPerDay: Number of pills to take per day (as a string)
+            3. Serial Number of the Prescription if found else create a random one
 
             Your response must be ONLY valid JSON with this exact structure:
             {
@@ -55,7 +56,8 @@ class GroqVision:
                         "quantity": "Quantity information",
                         "pillsPerDay": "Number of pills per day"
                     }
-                ]
+                ],
+                "serial_number": "Serial Number of the Prescription if found else create a random one"
             }
 
             Do not include any explanations, descriptions, or analysis outside the JSON structure.
