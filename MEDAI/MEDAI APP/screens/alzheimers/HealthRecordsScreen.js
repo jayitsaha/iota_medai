@@ -24,6 +24,8 @@ import theme from '../../constants/theme';
 
 // Import the healthcare service
 import HealthcareService from '../../services/HealthcareService';
+// Import the medicine verification context
+import { useMedicineVerification } from '../../components/MedicineVerificationWorkflow';
 
 const HealthRecordsScreen = ({ navigation }) => {
   const [records, setRecords] = useState([]);
@@ -41,6 +43,9 @@ const HealthRecordsScreen = ({ navigation }) => {
   ]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [filteredRecords, setFilteredRecords] = useState([]);
+
+  // Get the medicine verification context
+  const { loadPrescriptions } = useMedicineVerification();
 
   // Load patient ID on mount
   useEffect(() => {
@@ -89,6 +94,9 @@ const HealthRecordsScreen = ({ navigation }) => {
       
       // Update category counts
       updateCategoryCounts(healthRecords);
+      
+      // Also refresh prescriptions in the verification context
+      await loadPrescriptions();
       
       setLoading(false);
     } catch (error) {
@@ -171,56 +179,144 @@ const HealthRecordsScreen = ({ navigation }) => {
             title: result.name,
             description: 'Uploaded prescription',
             fileSize: fileInfo.size,
-            fileType: result.mimeType
+            fileType: result.mimeType,
+            medications: [
+              {
+                name: "Sample Medication",
+                dosage: "10mg",
+                frequency: "Once daily",
+                quantity: "30",
+                pillsPerDay: "1"
+              }
+            ]
           },
           status: "Active",
           timestamp: new Date().toISOString(),
-          blockchain_verified: true,
+          blockchain_verified: false, // Initially not verified
           file_uri: result.uri
         };
         
-        // In a real app, you would call the API to add the record
-        try {
-          const response = await HealthcareService.addHealthcareRecord(
-            patientId,
-            'prescription',
-            'Uploaded by patient',
-            new Date().toISOString().split('T')[0],
-            JSON.stringify({
-              title: result.name,
-              description: 'Uploaded prescription',
-              fileSize: fileInfo.size,
-              fileType: result.mimeType
-            })
-          );
-          
-          if (response.blockId) {
-            newRecord.blockchain_id = response.blockId;
-          }
-          
-          // Update the records list
-          const updatedRecords = [newRecord, ...records];
-          setRecords(updatedRecords);
-          updateCategoryCounts(updatedRecords);
-          
-          Alert.alert('Success', 'Prescription uploaded successfully');
-        } catch (apiError) {
-          console.error('API Error:', apiError);
-          
-          // Fallback to just updating the UI for demo purposes
-          const updatedRecords = [newRecord, ...records];
-          setRecords(updatedRecords);
-          updateCategoryCounts(updatedRecords);
-          
-          Alert.alert('Note', 'Prescription added locally (offline mode)');
-        }
-        
-        setLoading(false);
+        // Show a verification prompt
+        Alert.alert(
+          'Prescription Upload',
+          'Do you want to verify this prescription on the blockchain?',
+          [
+            { 
+              text: 'Skip Verification', 
+              style: 'cancel',
+              onPress: async () => {
+                // Just add the record without verification
+                await addPrescriptionRecord(newRecord);
+              }
+            },
+            { 
+              text: 'Verify', 
+              onPress: async () => {
+                // Add record with blockchain verification
+                await verifyAndAddPrescription(newRecord);
+              }
+            }
+          ]
+        );
       }
     } catch (error) {
       console.error('Error uploading document:', error);
       setLoading(false);
       Alert.alert('Error', 'Failed to upload document. Please try again.');
+    }
+  };
+
+  // Add prescription record without verification
+  const addPrescriptionRecord = async (record) => {
+    try {
+      // In a real app, you would call the API to add the record
+      try {
+        const response = await HealthcareService.addHealthcareRecord(
+          patientId,
+          'prescription',
+          'Uploaded by patient',
+          new Date().toISOString().split('T')[0],
+          JSON.stringify(record.details)
+        );
+        
+        if (response.blockId) {
+          record.blockchain_id = response.blockId;
+        }
+        
+        // Update the records list
+        const updatedRecords = [record, ...records];
+        setRecords(updatedRecords);
+        updateCategoryCounts(updatedRecords);
+        
+        // Also refresh prescriptions in the verification context
+        await loadPrescriptions();
+        
+        Alert.alert('Success', 'Prescription uploaded successfully');
+      } catch (apiError) {
+        console.error('API Error:', apiError);
+        
+        // Fallback to just updating the UI for demo purposes
+        const updatedRecords = [record, ...records];
+        setRecords(updatedRecords);
+        updateCategoryCounts(updatedRecords);
+        
+        Alert.alert('Note', 'Prescription added locally (offline mode)');
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Error adding prescription:', error);
+      setLoading(false);
+      Alert.alert('Error', 'Failed to add prescription. Please try again.');
+    }
+  };
+
+  // Verify prescription and add record
+  const verifyAndAddPrescription = async (record) => {
+    try {
+      // In a real app, this would verify with the blockchain
+      // For demo, simulate a verification delay
+      setTimeout(async () => {
+        // Add blockchain verification
+        record.blockchain_verified = true;
+        record.blockchain_id = `block-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        
+        // Update the records list
+        const updatedRecords = [record, ...records];
+        setRecords(updatedRecords);
+        updateCategoryCounts(updatedRecords);
+        
+        // Also refresh prescriptions in the verification context
+        await loadPrescriptions();
+        
+        Alert.alert('Success', 'Prescription verified and added to blockchain');
+        setLoading(false);
+      }, 2000);
+    } catch (error) {
+      console.error('Error verifying prescription:', error);
+      setLoading(false);
+      Alert.alert('Verification Error', 'Failed to verify prescription. It has been added without verification.');
+      
+      // Add without verification as fallback
+      await addPrescriptionRecord(record);
+    }
+  };
+
+  // Check if a medicine is verified on the blockchain
+  const checkMedicineVerified = async (medicineName) => {
+    try {
+      // Get verified medicines
+      const verifiedMedicinesJson = await AsyncStorage.getItem('verified_medicines');
+      const verifiedMedicines = verifiedMedicinesJson ? JSON.parse(verifiedMedicinesJson) : [];
+      
+      // Check if this medicine is verified
+      return verifiedMedicines.some(med => 
+        med.name.toLowerCase().includes(medicineName.toLowerCase()) ||
+        medicineName.toLowerCase().includes(med.name.toLowerCase())
+      );
+    } catch (error) {
+      console.error('Error checking medicine verification:', error);
+      return false;
     }
   };
 
@@ -264,6 +360,41 @@ const HealthRecordsScreen = ({ navigation }) => {
       console.error('Error sharing record:', error);
       Alert.alert('Error', 'Failed to share record. Please try again.');
     }
+  };
+
+  // Verify a prescription by scanning its associated medicines
+  const verifyPrescription = (record) => {
+    // Extract medication names from prescription
+    let details;
+    try {
+      details = typeof record.details === 'string' 
+        ? JSON.parse(record.details) 
+        : record.details;
+    } catch (e) {
+      console.error('Error parsing details:', e);
+      Alert.alert('Error', 'Could not parse prescription details');
+      return;
+    }
+    
+    // Check if there are medications to verify
+    if (!details || !details.medications || details.medications.length === 0) {
+      Alert.alert(
+        'No Medications Found',
+        'No medications found in this prescription. Please add medications to verify.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    // Navigate to medication screen for verification
+    navigation.navigate('Medication');
+    
+    // Show verification instructions
+    Alert.alert(
+      'Verify Prescription',
+      'To verify this prescription, please scan each medication to confirm authenticity.',
+      [{ text: 'OK' }]
+    );
   };
 
   const renderCategoryButton = ({ item }) => (
@@ -359,6 +490,18 @@ const HealthRecordsScreen = ({ navigation }) => {
               {item.blockchain_verified ? "Blockchain Verified" : "Pending Verification"}
             </Text>
           </View>
+          
+          {/* Add verify button for unverified prescriptions */}
+          {item.record_type === 'prescription' && !item.blockchain_verified && (
+            <TouchableOpacity 
+              style={styles.verifyButton}
+              onPress={() => verifyPrescription(item)}
+            >
+              <Ionicons name="shield-checkmark" size={16} color="#FFFFFF" />
+              <Text style={styles.verifyButtonText}>Verify</Text>
+            </TouchableOpacity>
+          )}
+          
           <Ionicons name="chevron-forward" size={20} color="#CCC" />
         </View>
       </TouchableOpacity>
@@ -463,14 +606,41 @@ const HealthRecordsScreen = ({ navigation }) => {
             </View>
           )}
           
-          {details?.medications && (
+          {/* Render medications for prescriptions */}
+          {selectedRecord.record_type === 'prescription' && details?.medications && (
             <View style={styles.medicationsSection}>
               <Text style={styles.subSectionTitle}>Medications</Text>
               {details.medications.map((med, index) => (
                 <View key={index} style={styles.medicationItem}>
                   <Text style={styles.medicationName}>{med.name}</Text>
                   <Text style={styles.medicationDosage}>{med.dosage}</Text>
-                  <Text style={styles.medicationInstructions}>{med.instructions}</Text>
+                  <Text style={styles.medicationInstructions}>{med.frequency}</Text>
+                  
+                  {/* Show verification status for each medication */}
+                  <View style={styles.medicationVerifyRow}>
+                    <TouchableOpacity 
+                      style={styles.medicationVerifyButton}
+                      onPress={async () => {
+                        const isVerified = await checkMedicineVerified(med.name);
+                        Alert.alert(
+                          'Medication Status',
+                          isVerified 
+                            ? `${med.name} is verified on the blockchain` 
+                            : `${med.name} is not verified. Please scan the medication to verify.`,
+                          [
+                            { text: 'OK' },
+                            !isVerified ? { 
+                              text: 'Scan Now', 
+                              onPress: () => navigation.navigate('Medication')
+                            } : null
+                          ].filter(Boolean)
+                        );
+                      }}
+                    >
+                      <Ionicons name="shield-checkmark" size={16} color="#6A5ACD" />
+                      <Text style={styles.medicationVerifyText}>Check Verification</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ))}
             </View>
@@ -501,6 +671,20 @@ const HealthRecordsScreen = ({ navigation }) => {
             <Text style={styles.actionButtonText}>Share</Text>
           </TouchableOpacity>
         </View>
+        
+        {/* Add verify button for prescriptions */}
+        {selectedRecord.record_type === 'prescription' && !selectedRecord.blockchain_verified && (
+          <TouchableOpacity
+            style={styles.verifyButtonLarge}
+            onPress={() => {
+              setModalVisible(false);
+              verifyPrescription(selectedRecord);
+            }}
+          >
+            <Ionicons name="shield-checkmark" size={20} color="white" />
+            <Text style={styles.verifyButtonLargeText}>Verify Prescription</Text>
+          </TouchableOpacity>
+        )}
         
         <View style={styles.blockchainVerification}>
           <View style={styles.verificationHeader}>
@@ -766,6 +950,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginLeft: 5,
   },
+  // Add verify button styles
+  verifyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6A5ACD',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+  },
+  verifyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  verifyButtonLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6A5ACD',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  verifyButtonLargeText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -934,6 +1148,25 @@ const styles = StyleSheet.create({
   medicationInstructions: {
     fontSize: 12,
     color: '#666',
+  },
+  // Add medication verification styles
+  medicationVerifyRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 5,
+  },
+  medicationVerifyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F0FF',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+  },
+  medicationVerifyText: {
+    color: '#6A5ACD',
+    fontSize: 12,
+    marginLeft: 4,
   },
   filePreview: {
     alignItems: 'center',

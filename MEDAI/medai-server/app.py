@@ -930,7 +930,7 @@ def identify_food_with_vision(image_path: str) -> dict:
                 "Authorization": f"Bearer {os.getenv('GROQ_API_KEY', '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')}"
             },
             json={
-                "model": "llama-3.2-11b-vision-preview",  # Current supported Groq vision model
+                "model": "meta-llama/llama-4-scout-17b-16e-instruct",  # Current supported Groq vision model
                 "messages": [
                     {
                         "role": "user",
@@ -1563,6 +1563,48 @@ def get_reference_pose(pose_id):
                 'keypoints': advanced_yoga_pose_estimator._get_dummy_keypoints()
             }
         })
+    
+RECORDS_PATH = '/Users/j0s0yz3/Downloads/iota/iota/server/medicine_records.json'
+@app.route('/api/verify-medicine-blockchain', methods=['POST'])
+def verify_medicine():
+    try:
+        # Get serial number from request
+        data = request.get_json()
+        if not data or 'serial_number' not in data:
+            return jsonify({'error': 'Serial number is required'}), 400
+        
+        serial_number = data['serial_number']
+        
+        # Check if the file exists
+        if not os.path.exists(RECORDS_PATH):
+            return jsonify({'error': 'Medicine records file not found'}), 500
+        
+        # Read and parse the JSON file
+        with open(RECORDS_PATH, 'r') as file:
+            medicine_records = json.load(file)
+        
+        # Find the medicine record by serial number
+        medicine_record = next((record for record in medicine_records 
+                               if record.get('serial_number') == serial_number), None)
+        
+        if medicine_record and medicine_record.get('status') == 'activated':
+            return jsonify({
+                'verified': True,
+                'message': 'Medicine has been verified and is safe to use.'
+            })
+        elif medicine_record:
+            return jsonify({
+                'verified': False,
+                'message': 'This medication is registered but not activated. It may be recalled or expired.'
+            })
+        else:
+            return jsonify({
+                'verified': False,
+                'message': 'This medication is not found in our database. It may be counterfeit.'
+            })
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
     
 
 

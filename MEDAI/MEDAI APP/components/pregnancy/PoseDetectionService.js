@@ -3,7 +3,7 @@ import axios from 'axios';
 import { throttle } from 'lodash';
 
 // API base URL - update this to match your actual server URL
-const API_BASE_URL = 'http://192.168.107.82:5001';
+const API_BASE_URL = 'http://192.168.160.82:5001';
 
 // Keypoint names for visualization
 const KEYPOINT_NAMES = [

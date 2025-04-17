@@ -19,6 +19,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DynamicBottomTabNavigator from './navigation/DynamicBottomTabNavigator';
 import PregnancyBottomTabNavigator from './navigation/PregnancyBottomTabNavigator';
 
+// Import MedicineVerificationProvider
+import { MedicineVerificationProvider } from './components/MedicineVerificationWorkflow';
+
 // Persona Selection Screen
 import PersonaSelectionScreen from './screens/onboarding/PersonaSelectionScreen';
 
@@ -322,24 +325,27 @@ const App = () => {
     <SafeAreaProvider>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       <WalletProvider>
-        <NavigationContainer
-          ref={navigationRef}
-          onStateChange={onStateChange}
-        >
-          {!isLoggedIn ? (
-            <RootStack.Navigator screenOptions={{ headerShown: false }}>
-              <RootStack.Screen name="Login">
-                {props => <LoginScreen {...props} onLogin={handleLogin} />}
-              </RootStack.Screen>
-            </RootStack.Navigator>
-          ) : userType === 'alzheimers' ? (
-            // Use the new Smart Navigation for Alzheimer's
-            <AlzheimersSmartNavigator logoutHandler={handleLogout} />
-          ) : (
-            // Use the new Smart Navigation for Pregnancy
-            <PregnancySmartNavigator logoutHandler={handleLogout} />
-          )}
-        </NavigationContainer>
+        {/* Wrap the Alzheimer's navigation with MedicineVerificationProvider */}
+        <MedicineVerificationProvider>
+          <NavigationContainer
+            ref={navigationRef}
+            onStateChange={onStateChange}
+          >
+            {!isLoggedIn ? (
+              <RootStack.Navigator screenOptions={{ headerShown: false }}>
+                <RootStack.Screen name="Login">
+                  {props => <LoginScreen {...props} onLogin={handleLogin} />}
+                </RootStack.Screen>
+              </RootStack.Navigator>
+            ) : userType === 'alzheimers' ? (
+              // Use the new Smart Navigation for Alzheimer's
+              <AlzheimersSmartNavigator logoutHandler={handleLogout} />
+            ) : (
+              // Use the new Smart Navigation for Pregnancy
+              <PregnancySmartNavigator logoutHandler={handleLogout} />
+            )}
+          </NavigationContainer>
+        </MedicineVerificationProvider>
       </WalletProvider>
     </SafeAreaProvider>
   );

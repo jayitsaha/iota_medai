@@ -19,6 +19,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import OCRService from '../../services/OCRService';
 import NotificationService from '../../services/NotificationService';
+// Import filesystem module - add this
+import * as FileSystem from 'expo-file-system';
+
+// Import our Medicine Verification Workflow
+import { useMedicineVerification } from '../../components/MedicineVerificationWorkflow';
 
 const MedicationScreen = ({ navigation }) => {
   const [medicines, setMedicines] = useState([]);
@@ -28,11 +33,21 @@ const MedicationScreen = ({ navigation }) => {
   const [detailedView, setDetailedView] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+
+  // Get medicine verification functions
+  const { 
+    addScannedMedicineToList,
+    handleMedicineVerification,
+    loadPrescriptions
+  } = useMedicineVerification();
 
   // Load saved medicines whenever the screen comes into focus
   useFocusEffect(
     useCallback(() => {
       loadMedications();
+      // Also refresh prescriptions
+      loadPrescriptions();
     }, [])
   );
 
@@ -42,6 +57,7 @@ const MedicationScreen = ({ navigation }) => {
     const unsubscribe = navigation?.addListener('focus', () => {
       setLoading(false);
       setProcessingImage(false);
+      setVerifying(false);
     });
     return unsubscribe;
   }, [navigation, medicines]);
@@ -74,6 +90,97 @@ const MedicationScreen = ({ navigation }) => {
     }
   };
 
+
+  const API_BASE_URL = 'http://192.168.160.82:5001';
+  const MedicineVerificationAPI = {
+    async verifyMedicineApiCAll(serialNumber) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/verify-medicine-blockchain`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            serial_number: serialNumber
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('Medicine verification API error:', error);
+        throw error;
+      }
+    }
+  };
+
+  // NEW FUNCTION: Custom medicine verification that checks the JSON file
+  const verifyMedicine = async (medicine) => {
+    setVerifying(true);
+    try {
+      // Call the Flask API to verify the medicine
+      const result = await MedicineVerificationAPI.verifyMedicineApiCAll(medicine.serialNumber);
+      
+      if (result.verified) {
+        // Update the medicine's verification status
+        const updatedMedicines = medicines.map(med => {
+          if (med.id === medicine.id) {
+            return {
+              ...med,
+              blockchain_verified: true
+            };
+          }
+          return med;
+        });
+        
+        // Save the updated medicines
+        await saveMedicines(updatedMedicines);
+        setMedicines(updatedMedicines);
+        
+        // If the detailed view is open, update it too
+        if (detailedView && detailedView.id === medicine.id) {
+          setDetailedView({
+            ...detailedView,
+            blockchain_verified: true
+          });
+        }
+        
+        // Schedule medication reminders (now that the medicine is verified)
+        scheduleMedicationReminders();
+        
+        Alert.alert(
+          'Verification Successful',
+          result.message || `${medicine.name} has been verified and is safe to use.`,
+          [{ text: 'OK' }]
+        );
+        
+        setVerifying(false);
+        return true;
+      } else {
+        // Failed verification with message from API
+        Alert.alert(
+          'Verification Failed',
+          result.message || 'This medication could not be verified.',
+          [{ text: 'OK' }]
+        );
+        
+        setVerifying(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error verifying medicine:', error);
+      Alert.alert(
+        'Verification Error',
+        'Failed to connect to verification service. Please try again later.',
+        [{ text: 'OK' }]
+      );
+      setVerifying(false);
+      return false;
+    }
+  };
   // Handle prescription upload with Llama Vision analysis
   const handlePrescriptionUpload = async (useCamera = false) => {
     setProcessingImage(true);
@@ -100,7 +207,13 @@ const MedicationScreen = ({ navigation }) => {
             refillSchedule: '30', // Default 30 days
             imageUri: null, // Will be updated when scanned
             remainingPills: parseInt(medicine.quantity) || 30,
-            dateAdded: new Date().toISOString()
+            dateAdded: new Date().toISOString(),
+            // Add a flag to indicate this is from a prescription
+            fromPrescription: true,
+            // Set as unverified initially
+            blockchain_verified: false,
+            // Create a serial number for later verification
+            serialNumber: `RX${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
           }));
           
           const updatedMedicines = [...medicines, ...newMedicines];
@@ -109,12 +222,32 @@ const MedicationScreen = ({ navigation }) => {
           
           Alert.alert(
             'Prescription Analyzed',
-            `Successfully identified ${newMedicines.length} medications from your prescription.`,
+            `Successfully identified ${newMedicines.length} medications from your prescription.\n\nThese medications will need to be verified before use.`,
             [{ text: 'OK' }]
           );
           
           // Schedule reminders for the new medications
           scheduleMedicationReminders();
+          
+          // Also save prescription to healthcare records
+          try {
+            const patientId = await AsyncStorage.getItem('user_id');
+            if (patientId) {
+              await HealthcareService.addHealthcareRecord(
+                patientId,
+                'prescription',
+                'Uploaded by patient',
+                prescriptionData.date || new Date().toISOString().split('T')[0],
+                JSON.stringify({
+                  title: 'Prescription Upload',
+                  description: 'Prescription uploaded by patient',
+                  medications: prescriptionData.medicines
+                })
+              );
+            }
+          } catch (healthError) {
+            console.error('Error saving to healthcare records:', healthError);
+          }
         } else {
           Alert.alert(
             'Analysis Incomplete',
@@ -150,64 +283,63 @@ const MedicationScreen = ({ navigation }) => {
         const scanResult = await OCRService.scanMedicine(imageUri);
         
         if (scanResult && scanResult.name) {
-          // Find the matching medicine in the list (case insensitive)
-          const medicineIndex = medicines.findIndex(
+          // Create medicine object with scan data
+          const medicineData = {
+            name: scanResult.name,
+            pillCount: scanResult.pillCount || 30,
+            imageUri: imageUri,
+            description: scanResult.description,
+            expiryDate: scanResult.expiryDate,
+            // Generate serial number for verification
+            serialNumber: scanResult.serial_number
+          };
+          
+          // Find if this medicine already exists
+          const existingMedicineIndex = medicines.findIndex(
             med => med.name.toLowerCase().includes(scanResult.name.toLowerCase()) ||
                   scanResult.name.toLowerCase().includes(med.name.toLowerCase())
           );
           
-          if (medicineIndex !== -1) {
-            // Update the medicine info
+          if (existingMedicineIndex !== -1) {
+            // Update with the existing medicine's ID for verification
+            medicineData.id = medicines[existingMedicineIndex].id;
+            
+            // Update the existing medicine with new scan data
             const updatedMedicines = [...medicines];
-            updatedMedicines[medicineIndex] = {
-              ...updatedMedicines[medicineIndex],
+            updatedMedicines[existingMedicineIndex] = {
+              ...updatedMedicines[existingMedicineIndex],
               imageUri: imageUri,
-              remainingPills: scanResult.pillCount || updatedMedicines[medicineIndex].remainingPills,
-              lastRefill: new Date().toISOString().split('T')[0],
-              description: scanResult.description
+              description: scanResult.description,
+              expiryDate: scanResult.expiryDate,
+              // Don't change verification status
+              remainingPills: scanResult.pillCount || updatedMedicines[existingMedicineIndex].remainingPills
             };
             
+            // Save the updated medicine list
             setMedicines(updatedMedicines);
             await saveMedicines(updatedMedicines);
             
             Alert.alert(
-              'Medication Identified',
-              `${scanResult.name} has been identified and updated with ${scanResult.pillCount || 'current'} pills.`,
-              [{ text: 'OK' }]
+              'Medicine Scanned',
+              `${scanResult.name} has been updated in your list. It needs to be verified before use.`,
+              [
+                { text: 'Verify Now', onPress: () => verifyMedicine(updatedMedicines[existingMedicineIndex]) },
+                { text: 'Later', style: 'cancel' }
+              ]
             );
           } else {
+            // Add as a new unverified medicine
+            await addScannedMedicineToList(medicineData);
+            
+            // Refresh the medicine list
+            loadMedications();
+            
             Alert.alert(
-              'New Medication Detected',
-              `This has been identified as "${scanResult.name}". Would you like to add it to your list?`,
+              'Medicine Added',
+              `${scanResult.name} has been added to your list. It needs to be verified before use.`,
               [
-                { text: 'No', style: 'cancel' },
-                {
-                  text: 'Yes',
-                  onPress: () => {
-                    // Add new medicine
-                    const newMedicine = {
-                      id: `med-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                      name: scanResult.name,
-                      dosage: 'Unknown',
-                      frequency: 'Once daily',
-                      quantity: scanResult.pillCount || 30,
-                      pillsPerDay: 1,
-                      startDate: new Date().toISOString().split('T')[0],
-                      lastRefill: new Date().toISOString().split('T')[0],
-                      refillSchedule: '30',
-                      imageUri: imageUri,
-                      remainingPills: scanResult.pillCount || 30,
-                      description: scanResult.description,
-                      expiryDate: scanResult.expiryDate,
-                      dateAdded: new Date().toISOString()
-                    };
-                    
-                    const updatedMedicines = [...medicines, newMedicine];
-                    setMedicines(updatedMedicines);
-                    saveMedicines(updatedMedicines);
-                    scheduleMedicationReminders();
-                  }
-                }
+                { text: 'Verify Now', onPress: () => verifyMedicine(medicineData) },
+                { text: 'Later', style: 'cancel' }
               ]
             );
           }
@@ -276,29 +408,40 @@ const MedicationScreen = ({ navigation }) => {
     
     // Schedule new reminders for each medicine
     medicines.forEach(medicine => {
-      // Morning reminder
-      if (medicine.frequency.toLowerCase().includes('daily')) {
-        NotificationService.scheduleDailyNotification(
-          `Time to take ${medicine.name}`,
-          `Take ${medicine.dosage} as prescribed.`,
-          9, // 9 AM
-          0,
-          medicine.id + '-morning'
+      // Only schedule reminders for verified medicines or add a warning for unverified ones
+      if (medicine.blockchain_verified) {
+        // Morning reminder
+        if (medicine.frequency.toLowerCase().includes('daily')) {
+          NotificationService.scheduleDailyNotification(
+            `Time to take ${medicine.name}`,
+            `Take ${medicine.dosage} as prescribed.`,
+            9, // 9 AM
+            0,
+            medicine.id + '-morning'
+          );
+        }
+        
+        // Evening reminder (if twice daily)
+        if (medicine.frequency.toLowerCase().includes('twice')) {
+          NotificationService.scheduleDailyNotification(
+            `Time to take ${medicine.name}`,
+            `Take ${medicine.dosage} as prescribed.`,
+            18, // 6 PM
+            0,
+            medicine.id + '-evening'
+          );
+        }
+      } else {
+        // Reminder to verify medicine
+        NotificationService.scheduleNotification(
+          'Medicine Verification Needed',
+          `${medicine.name} needs to be verified before use.`,
+          new Date(Date.now() + 3600000), // 1 hour from now
+          medicine.id + '-verify'
         );
       }
       
-      // Evening reminder (if twice daily)
-      if (medicine.frequency.toLowerCase().includes('twice')) {
-        NotificationService.scheduleDailyNotification(
-          `Time to take ${medicine.name}`,
-          `Take ${medicine.dosage} as prescribed.`,
-          18, // 6 PM
-          0,
-          medicine.id + '-evening'
-        );
-      }
-      
-      // Refill reminder
+      // Refill reminder (for all medicines)
       const daysUntilRefill = Math.floor(medicine.remainingPills / (medicine.pillsPerDay || 1));
       if (daysUntilRefill <= 7) {
         // If less than 7 days of pills left, schedule refill reminder
@@ -324,6 +467,7 @@ const MedicationScreen = ({ navigation }) => {
     
     const daysLeft = Math.floor(detailedView.remainingPills / (detailedView.pillsPerDay || 1));
     const isLowStock = daysLeft <= 7;
+    const isVerified = detailedView.blockchain_verified;
     
     return (
       <Modal
@@ -345,6 +489,34 @@ const MedicationScreen = ({ navigation }) => {
             </View>
             
             <ScrollView style={styles.modalContent}>
+              {/* Verification status banner */}
+              <View style={[
+                styles.verificationBadge, 
+                {backgroundColor: isVerified ? '#2DCE89' : '#FF6B6B'}
+              ]}>
+                <MaterialCommunityIcons 
+                  name={isVerified ? "shield-check" : "shield-alert"} 
+                  size={24} 
+                  color="white" 
+                />
+                <Text style={styles.verificationText}>
+                  {isVerified 
+                    ? "Blockchain Verified" 
+                    : "Not Verified - Medicine needs verification"}
+                </Text>
+              </View>
+              
+              {/* Warning for unverified medicines */}
+              {!isVerified && (
+                <View style={styles.warningBox}>
+                  <MaterialCommunityIcons name="alert-circle" size={24} color="#FF6B6B" />
+                  <Text style={styles.warningText}>
+                    This medicine has not been verified and may not be safe to use.
+                    Please verify it before taking.
+                  </Text>
+                </View>
+              )}
+              
               {detailedView.imageUri ? (
                 <Image 
                   source={{ uri: detailedView.imageUri }} 
@@ -384,6 +556,11 @@ const MedicationScreen = ({ navigation }) => {
                   ]}>
                     {detailedView.remainingPills} pills ({daysLeft} days left)
                   </Text>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Serial Number:</Text>
+                  <Text style={styles.infoValue}>{detailedView.serialNumber}</Text>
                 </View>
                 
                 {detailedView.expiryDate && (
@@ -447,11 +624,23 @@ const MedicationScreen = ({ navigation }) => {
                   style={styles.actionButtonSecondary}
                   onPress={() => {
                     setModalVisible(false);
-                    handleMedicineScan();
+                    verifyMedicine(detailedView);
                   }}
+                  disabled={verifying}
                 >
-                  <MaterialCommunityIcons name="camera" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                  <Text style={styles.buttonText}>Scan Medication</Text>
+                  {verifying ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                  ) : (
+                    <MaterialCommunityIcons 
+                      name={isVerified ? "shield-refresh" : "shield-check"} 
+                      size={20} 
+                      color="#FFFFFF" 
+                      style={{ marginRight: 8 }} 
+                    />
+                  )}
+                  <Text style={styles.buttonText}>
+                    {verifying ? "Verifying..." : isVerified ? "Re-verify" : "Verify Medicine"}
+                  </Text>
                 </TouchableOpacity>
               </View>
               
@@ -486,10 +675,15 @@ const MedicationScreen = ({ navigation }) => {
   const renderMedicineCard = ({ item }) => {
     const daysLeft = Math.floor(item.remainingPills / (item.pillsPerDay || 1));
     const isLowStock = daysLeft <= 7;
+    const isVerified = item.blockchain_verified;
     
     return (
       <TouchableOpacity 
-        style={[styles.medicineCard, isLowStock && styles.lowStockCard]}
+        style={[
+          styles.medicineCard, 
+          isLowStock && styles.lowStockCard,
+          !isVerified && styles.unverifiedCard
+        ]}
         onPress={() => viewMedicationDetails(item)}
       >
         <View style={styles.medicineHeaderRow}>
@@ -497,6 +691,13 @@ const MedicationScreen = ({ navigation }) => {
             <Text style={styles.medicineName}>{item.name}</Text>
             <Text style={styles.medicineDosage}>{item.dosage}</Text>
           </View>
+          
+          {/* Verification badge */}
+          {isVerified ? (
+            <MaterialCommunityIcons name="shield-check" size={24} color="#2DCE89" />
+          ) : (
+            <MaterialCommunityIcons name="shield-alert" size={24} color="#FF6B6B" />
+          )}
           
           {isLowStock && (
             <MaterialCommunityIcons name="alert-circle" size={24} color="#FF6347" />
@@ -521,6 +722,23 @@ const MedicationScreen = ({ navigation }) => {
                 {item.remainingPills} pills left ({daysLeft} days)
               </Text>
             </View>
+            
+            <View style={styles.medicineInfo}>
+              <MaterialCommunityIcons name="key" size={18} color="#6A5ACD" />
+              <Text style={styles.medicineInfoText}>
+                SN: {item.serialNumber}
+              </Text>
+            </View>
+            
+            {/* Show verification status text */}
+            {!isVerified && (
+              <View style={styles.medicineInfo}>
+                <MaterialCommunityIcons name="shield-alert" size={18} color="#FF6B6B" />
+                <Text style={styles.verificationRequiredText}>
+                  Verification required
+                </Text>
+              </View>
+            )}
           </View>
           
           <View style={styles.rightColumn}>
@@ -534,7 +752,23 @@ const MedicationScreen = ({ navigation }) => {
           </View>
         </View>
         
-        {isLowStock && (
+        {/* Show verify button for unverified medicines */}
+        {!isVerified && (
+          <TouchableOpacity 
+            style={styles.verifyButton}
+            onPress={() => verifyMedicine(item)}
+            disabled={verifying}
+          >
+            {verifying ? (
+              <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 4 }} />
+            ) : (
+              <MaterialCommunityIcons name="shield-check" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+            )}
+            <Text style={styles.verifyText}>{verifying ? "Verifying..." : "Verify Medicine"}</Text>
+          </TouchableOpacity>
+        )}
+        
+        {isLowStock && isVerified && (
           <TouchableOpacity 
             style={styles.reorderButton}
             onPress={() => confirmReorder(item)}
@@ -549,6 +783,25 @@ const MedicationScreen = ({ navigation }) => {
 
   // Confirm medication reorder
   const confirmReorder = (medication) => {
+    // Only allow reordering verified medicines
+    if (!medication.blockchain_verified) {
+      Alert.alert(
+        'Verification Required',
+        'You need to verify this medicine before you can reorder it.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Verify Now', 
+            onPress: () => {
+              setModalVisible(false);
+              verifyMedicine(medication);
+            } 
+          }
+        ]
+      );
+      return;
+    }
+    
     Alert.alert(
       'Confirm Reorder',
       `Would you like to reorder ${medication.name}?`,
@@ -593,6 +846,7 @@ const MedicationScreen = ({ navigation }) => {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <ScrollView 
+          style={styles.scrollContent}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6A5ACD']} />
@@ -654,13 +908,45 @@ const MedicationScreen = ({ navigation }) => {
               </Text>
             </View>
           ) : (
-            <FlatList
-              data={medicines}
-              renderItem={renderMedicineCard}
-              keyExtractor={item => item.id}
-              contentContainerStyle={styles.medicinesList}
-              scrollEnabled={false}
-            />
+            <>
+              {/* Add a section for unverified medicines */}
+              {medicines.some(med => !med.blockchain_verified) && (
+                <View style={styles.unverifiedSection}>
+                  <Text style={styles.unverifiedSectionTitle}>
+                    Needs Verification
+                  </Text>
+                  <Text style={styles.unverifiedSectionDescription}>
+                    These medicines need to be verified before use
+                  </Text>
+                  
+                  <FlatList
+                    data={medicines.filter(med => !med.blockchain_verified)}
+                    renderItem={renderMedicineCard}
+                    keyExtractor={item => item.id}
+                    scrollEnabled={false}
+                  />
+                </View>
+              )}
+              
+              {/* Section for verified medicines */}
+              {medicines.some(med => med.blockchain_verified) && (
+                <View style={styles.verifiedSection}>
+                  <Text style={styles.verifiedSectionTitle}>
+                    Verified Medications
+                  </Text>
+                  <Text style={styles.verifiedSectionDescription}>
+                    These medicines are verified and ready to use
+                  </Text>
+                  
+                  <FlatList
+                    data={medicines.filter(med => med.blockchain_verified)}
+                    renderItem={renderMedicineCard}
+                    keyExtractor={item => item.id}
+                    scrollEnabled={false}
+                  />
+                </View>
+              )}
+            </>
           )}
         </ScrollView>
         
@@ -767,8 +1053,35 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
   },
-  medicinesList: {
-    paddingBottom: 20,
+  // Unverified section styles
+  unverifiedSection: {
+    marginBottom: 25,
+  },
+  unverifiedSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FF6B6B',
+    marginBottom: 5,
+  },
+  unverifiedSectionDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 15,
+  },
+  // Verified section styles
+  verifiedSection: {
+    marginBottom: 20,
+  },
+  verifiedSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2DCE89',
+    marginBottom: 5,
+  },
+  verifiedSectionDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 15,
   },
   medicineCard: {
     backgroundColor: '#FFF',
@@ -784,6 +1097,10 @@ const styles = StyleSheet.create({
   lowStockCard: {
     borderLeftWidth: 4,
     borderLeftColor: '#FF6347',
+  },
+  unverifiedCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B6B',
   },
   medicineHeaderRow: {
     flexDirection: 'row',
@@ -829,6 +1146,12 @@ const styles = StyleSheet.create({
     color: '#FF6347',
     fontWeight: '600',
   },
+  verificationRequiredText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#FF6B6B',
+    fontWeight: '600',
+  },
   medicineImage: {
     width: 60,
     height: 60,
@@ -842,19 +1165,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  noImageContainer: {
-    width: '100%',
-    height: 200,
-    borderRadius: 12,
-    backgroundColor: '#F0F0FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  noImageText: {
+  verifyButton: {
+    flexDirection: 'row',
+    backgroundColor: '#6A5ACD',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
     marginTop: 10,
+    alignItems: 'center',
+  },
+  verifyText: {
+    color: '#FFFFFF',
     fontSize: 14,
-    color: '#999',
+    fontWeight: '600',
   },
   reorderButton: {
     flexDirection: 'row',
@@ -881,6 +1205,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginVertical: 10,
   },
+  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -910,11 +1235,54 @@ const styles = StyleSheet.create({
   modalContent: {
     padding: 18,
   },
+  // Verification badge styles
+  verificationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  verificationText: {
+    color: 'white',
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  // Warning box for unverified medicines
+  warningBox: {
+    flexDirection: 'row',
+    backgroundColor: '#FFEAEA',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 15,
+    alignItems: 'flex-start',
+  },
+  warningText: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#FF6B6B',
+    lineHeight: 20,
+  },
   modalImage: {
     width: '100%',
     height: 200,
     borderRadius: 16,
     marginBottom: 18,
+  },
+  noImageContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: '#F0F0FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  noImageText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#999',
   },
   infoSection: {
     marginBottom: 20,
@@ -991,4 +1359,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   }
 });
+
 export default MedicationScreen;

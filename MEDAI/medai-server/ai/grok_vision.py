@@ -69,7 +69,7 @@ class GroqVision:
                     "Authorization": f"Bearer {GROQ_API_KEY}"
                 },
                 json={
-                    "model": "llama-3.2-11b-vision-preview",  # Current supported Groq model
+                    "model": "meta-llama/llama-4-scout-17b-16e-instruct",  # Current supported Groq model
                     "messages": [
                         {
                             "role": "user",
@@ -161,13 +161,15 @@ class GroqVision:
             2. Approximate pill count (if visible)
             3. Any visible expiry date
             4. Detailed description of the pills (color, shape, markings)
+            5. Serial Number (Else create one)
 
             Your response must be ONLY valid JSON with this exact structure:
             {
                 "name": "Medication Name",
                 "pillCount": number or null,
                 "expiryDate": "YYYY-MM-DD" or null,
-                "description": "Detailed description of the medication"
+                "description": "Detailed description of the medication",
+                "serial_number": "Serial Number if found in the image or an auto generated one"
             }
 
             Do not include any explanations, descriptions, or analysis outside the JSON structure.
@@ -181,7 +183,7 @@ class GroqVision:
                     "Authorization": f"Bearer {GROQ_API_KEY}"
                 },
                 json={
-                    "model": "llama-3.2-11b-vision-preview",  # Current supported Groq model
+                    "model": "meta-llama/llama-4-scout-17b-16e-instruct",  # Current supported Groq model
                     "messages": [
                         {
                             "role": "user",

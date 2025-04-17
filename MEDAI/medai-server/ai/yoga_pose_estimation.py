@@ -825,7 +825,7 @@ class YogaPoseEstimator:
                     "Authorization": f"Bearer {GROQ_API_KEY}"
                 },
                 json={
-                    "model": "llama-3.2-11b-vision-preview",  # Current supported Groq model
+                    "model": "meta-llama/llama-4-scout-17b-16e-instruct",  # Current supported Groq model
                     "messages": [
                         {
                             "role": "user",

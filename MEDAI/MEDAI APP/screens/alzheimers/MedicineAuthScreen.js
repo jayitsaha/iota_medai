@@ -15,15 +15,21 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+// import { BarCodeScanner } from 'expo-barcode-scanner';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import theme from '../../constants/theme';
 
 // Import the medicine service
 import MedicineService from '../../services/MedicineService';
 
-const MedicineAuthScreen = ({ navigation }) => {
+// Import our Medicine Verification Workflow
+import { useMedicineVerification } from '../../components/MedicineVerificationWorkflow';
+
+const MedicineAuthScreen = ({ navigation, route }) => {
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [hasPermission, setHasPermission] = useState(null);
   const [scannedMedicine, setScannedMedicine] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [verificationResult, setVerificationResult] = useState(null);
@@ -32,10 +38,35 @@ const MedicineAuthScreen = ({ navigation }) => {
   const [selectedMedicine, setSelectedMedicine] = useState(null);
   const [orderStatus, setOrderStatus] = useState(null);
 
+  // Get medicine verification functions
+  const { 
+    completeMedicineVerification,
+    verifyMedicine
+  } = useMedicineVerification();
+
   useEffect(() => {
+    // Request camera permission
+    (async () => {
+      const { status } = await BarCodeScanner.requestPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
+    
     // Load verified medicines from storage
     loadVerifiedMedicines();
-  }, []);
+    
+    // Check if we received a medicine from navigation params
+    if (route.params && route.params.medicineData) {
+      // We received a medicine to verify from the Medication screen
+      const medicineToVerify = route.params.medicineData;
+      setScannedMedicine(medicineToVerify);
+      
+      // Set serial number if available, otherwise prompt the user to scan
+      if (medicineToVerify.serialNumber) {
+        setSerialNumber(medicineToVerify.serialNumber);
+        // Don't auto-verify - wait for user to initiate verification
+      }
+    }
+  }, [route.params]);
 
   const loadVerifiedMedicines = async () => {
     try {
@@ -56,26 +87,43 @@ const MedicineAuthScreen = ({ navigation }) => {
     }
   };
 
+  const handleBarCodeScanned = ({ type, data }) => {
+    setScanning(false);
+    
+    // Process the scanned data - in a real app, this would be a serial number or QR code
+    if (data) {
+      setSerialNumber(data);
+      Alert.alert(
+        'Barcode Detected',
+        `Serial number detected: ${data}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Verify', onPress: () => handleMedicineVerification(data) }
+        ]
+      );
+    }
+  };
+
   const handleManualEntry = () => {
     if (!serialNumber.trim()) {
       Alert.alert('Error', 'Please enter a valid serial number');
       return;
     }
     
-    verifyMedicine(serialNumber);
+    handleMedicineVerification(serialNumber);
   };
 
-  const verifyMedicine = async (serial) => {
+  const handleMedicineVerification = async (serial) => {
     try {
       setLoading(true);
       
-      // Call the medicine verification service
-      const result = await MedicineService.verifyMedicine(serial);
+      // Call the blockchain verification service
+      const result = await verifyMedicine(serial);
       
       setVerificationResult(result);
       setModalVisible(true);
       
-      // If verification was successful and not already activated, let's activate it
+      // If verification was successful and not already activated, activate it
       if (result.verified && !result.alreadyActivated) {
         try {
           const activationResult = await MedicineService.activateMedicine(serial);
@@ -103,10 +151,41 @@ const MedicineAuthScreen = ({ navigation }) => {
             const updatedMedicines = [...medicines, medicine];
             setMedicines(updatedMedicines);
             saveVerifiedMedicines(updatedMedicines);
+            
+            // If we have a medicine from navigation, complete the verification workflow
+            if (scannedMedicine) {
+              // Merge verification data with scanned medicine data
+              const verifiedMedicineData = {
+                ...scannedMedicine,
+                name: result.data.name || scannedMedicine.name,
+                manufacturer: result.data.manufacturer,
+                batchNumber: result.data.batch_number,
+                expiryDate: result.data.expiration_date,
+                serialNumber: serial,
+                blockchain_verified: true
+              };
+              
+              // Complete the verification flow to update medication status
+              await completeMedicineVerification(verifiedMedicineData, navigation);
+            }
           }
         } catch (activationError) {
           console.error('Error activating medicine:', activationError);
         }
+      } else if (result.verified && result.alreadyActivated && scannedMedicine) {
+        // If already activated, still update our medicine
+        const verifiedMedicineData = {
+          ...scannedMedicine,
+          name: result.data.name || scannedMedicine.name,
+          manufacturer: result.data.manufacturer,
+          batchNumber: result.data.batch_number,
+          expiryDate: result.data.expiration_date,
+          serialNumber: serial,
+          blockchain_verified: true
+        };
+        
+        // Complete the verification flow
+        await completeMedicineVerification(verifiedMedicineData, navigation);
       }
       
       setLoading(false);
@@ -167,7 +246,7 @@ const MedicineAuthScreen = ({ navigation }) => {
           { 
             text: 'Verify', 
             onPress: () => {
-              verifyMedicine(mockSerialNumber);
+              handleMedicineVerification(mockSerialNumber);
             }
           }
         ]
@@ -367,24 +446,45 @@ const MedicineAuthScreen = ({ navigation }) => {
                 </View>
               )}
               
+              {/* Show a different button based on whether this is from medication screen */}
               {isVerified && (
                 <TouchableOpacity
                   style={styles.orderModalButton}
                   onPress={() => {
                     setModalVisible(false);
-                    setSelectedMedicine({
-                      id: `med_${Date.now()}`,
-                      serialNumber: medicine.serial_number,
-                      name: medicine.name,
-                      manufacturer: medicine.manufacturer,
-                      batchNumber: medicine.batch_number,
-                      expiryDate: medicine.expiration_date
-                    });
-                    setOrderModalVisible(true);
+                    
+                    // If this is a medicine from the Medication screen
+                    if (scannedMedicine && scannedMedicine.id) {
+                      Alert.alert(
+                        'Verification Complete',
+                        'This medicine has been verified and is now safe to use.',
+                        [{ 
+                          text: 'Return to Medications', 
+                          onPress: () => navigation.navigate('Medication')
+                        }]
+                      );
+                    } else {
+                      // Show order modal for standalone verification
+                      setSelectedMedicine({
+                        id: `med_${Date.now()}`,
+                        serialNumber: medicine.serial_number,
+                        name: medicine.name,
+                        manufacturer: medicine.manufacturer,
+                        batchNumber: medicine.batch_number,
+                        expiryDate: medicine.expiration_date
+                      });
+                      setOrderModalVisible(true);
+                    }
                   }}
                 >
-                  <Ionicons name="cart" size={20} color="#FFFFFF" />
-                  <Text style={styles.orderModalButtonText}>Order This Medicine</Text>
+                  <Ionicons 
+                    name={scannedMedicine && scannedMedicine.id ? "checkmark-circle" : "cart"} 
+                    size={20} 
+                    color="#FFFFFF" 
+                  />
+                  <Text style={styles.orderModalButtonText}>
+                    {scannedMedicine && scannedMedicine.id ? "Return to Medications" : "Order This Medicine"}
+                  </Text>
                 </TouchableOpacity>
               )}
               
@@ -580,79 +680,213 @@ const MedicineAuthScreen = ({ navigation }) => {
     );
   };
 
+  // Message to show when medicine needs verification
+  const renderVerificationPrompt = () => {
+    if (!scannedMedicine) return null;
+    
+    return (
+      <View style={styles.verificationPromptContainer}>
+        <View style={styles.verificationPromptHeader}>
+          <Ionicons name="shield-outline" size={40} color="#6A5ACD" />
+          <Text style={styles.verificationPromptTitle}>Medicine Verification</Text>
+        </View>
+        
+        <Text style={styles.verificationPromptDescription}>
+          You're about to verify <Text style={styles.boldText}>{scannedMedicine.name}</Text>.
+          Please enter the serial number or scan the barcode on the medicine packaging
+          to verify its authenticity.
+        </Text>
+        
+        {scannedMedicine.imageUri && (
+          <Image 
+            source={{ uri: scannedMedicine.imageUri }} 
+            style={styles.medicinePreviewImage}
+          />
+        )}
+        
+        {serialNumber ? (
+          <TouchableOpacity
+            style={styles.verifyNowButton}
+            onPress={() => handleMedicineVerification(serialNumber)}
+          >
+            <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
+            <Text style={styles.verifyNowButtonText}>
+              Verify Now using: {serialNumber}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.verificationOptions}>
+            <TouchableOpacity
+              style={styles.verificationOption}
+              // onPress={() => setScanning(true)}
+            >
+              <Ionicons name="barcode" size={30} color="#6A5ACD" />
+              <Text style={styles.verificationOptionText}>Scan Barcode</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.verificationOption}
+              onPress={captureImage}
+            >
+              <Ionicons name="camera" size={30} color="#6A5ACD" />
+              <Text style={styles.verificationOptionText}>Take Photo</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Medicine Verification</Text>
-        </View>
-        
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={captureImage}
-          >
-            <View style={styles.actionIcon}>
-              <Ionicons name="camera" size={28} color="#6A5ACD" />
-            </View>
-            <Text style={styles.actionText}>Capture Image</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Medication')}
-          >
-            <View style={styles.actionIcon}>
-              <Ionicons name="medkit" size={28} color="#6A5ACD" />
-            </View>
-            <Text style={styles.actionText}>My Medications</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.manualEntryContainer}>
-          <TextInput
-            style={styles.serialInput}
-            placeholder="Enter medicine serial number"
-            value={serialNumber}
-            onChangeText={setSerialNumber}
-            placeholderTextColor="#999"
-          />
-          <TouchableOpacity 
-            style={styles.verifyButton}
-            onPress={handleManualEntry}
-          >
-            <Text style={styles.verifyButtonText}>Verify</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle" size={24} color="#6A5ACD" />
-          <Text style={styles.infoText}>
-            Verify your medications by scanning the barcode, QR code, or entering the serial number. 
-            All verified medicines are secured on the blockchain.
-          </Text>
-        </View>
-        
-        <Text style={styles.sectionTitle}>Verified Medicines</Text>
-        
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#6A5ACD" />
-            <Text style={styles.loadingText}>Processing...</Text>
-          </View>
-        ) : medicines.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="medical" size={64} color="#DDD" />
-            <Text style={styles.emptyText}>No verified medicines yet</Text>
-            <Text style={styles.emptySubtext}>
-              Verify your medications to ensure they're authentic and safe to use
-            </Text>
-          </View>
+        {/* Show verification prompt if we have a medicine to verify */}
+        {scannedMedicine ? (
+          <>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#6A5ACD" />
+                <Text style={styles.loadingText}>Verifying medicine...</Text>
+              </View>
+            ) : (
+              renderVerificationPrompt()
+            )}
+          </>
         ) : (
-          <ScrollView style={styles.medicinesList}>
-            {medicines.map((medicine, index) => renderMedicineItem(medicine, index))}
-          </ScrollView>
+          <>
+            <View style={styles.header}>
+              <Text style={styles.title}>Medicine Verification</Text>
+            </View>
+            
+            <View style={styles.actionsContainer}>
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => setScanning(true)}
+              >
+                <View style={styles.actionIcon}>
+                  <Ionicons name="scan" size={28} color="#6A5ACD" />
+                </View>
+                <Text style={styles.actionText}>Scan QR/Barcode</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={captureImage}
+              >
+                <View style={styles.actionIcon}>
+                  <Ionicons name="camera" size={28} color="#6A5ACD" />
+                </View>
+                <Text style={styles.actionText}>Capture Image</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('Medication')}
+              >
+                <View style={styles.actionIcon}>
+                  <Ionicons name="medkit" size={28} color="#6A5ACD" />
+                </View>
+                <Text style={styles.actionText}>My Medications</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.manualEntryContainer}>
+              <TextInput
+                style={styles.serialInput}
+                placeholder="Enter medicine serial number"
+                value={serialNumber}
+                onChangeText={setSerialNumber}
+                placeholderTextColor="#999"
+              />
+              <TouchableOpacity 
+                style={styles.verifyButton}
+                onPress={handleManualEntry}
+              >
+                <Text style={styles.verifyButtonText}>Verify</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle" size={24} color="#6A5ACD" />
+              <Text style={styles.infoText}>
+                Verify your medications by scanning the barcode, QR code, or entering the serial number. 
+                All verified medicines are secured on the blockchain.
+              </Text>
+            </View>
+            
+            <Text style={styles.sectionTitle}>Verified Medicines</Text>
+            
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#6A5ACD" />
+                <Text style={styles.loadingText}>Processing...</Text>
+              </View>
+            ) : medicines.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="medical" size={64} color="#DDD" />
+                <Text style={styles.emptyText}>No verified medicines yet</Text>
+                <Text style={styles.emptySubtext}>
+                  Verify your medications to ensure they're authentic and safe to use
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.medicinesList}>
+                {medicines.map((medicine, index) => renderMedicineItem(medicine, index))}
+              </ScrollView>
+            )}
+          </>
         )}
+        
+        {/* Scanner Modal */}
+        <Modal
+          visible={scanning}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setScanning(false)}
+        >
+          <View style={styles.scannerContainer}>
+            <View style={styles.scannerHeader}>
+              <TouchableOpacity
+                style={styles.scannerCloseButton}
+                onPress={() => setScanning(false)}
+              >
+                <Ionicons name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.scannerTitle}>Scan Medicine Code</Text>
+            </View>
+            
+            {hasPermission === null ? (
+              <View style={styles.scannerMessage}>
+                <Text>Requesting camera permission...</Text>
+              </View>
+            ) : hasPermission === false ? (
+              <View style={styles.scannerMessage}>
+                <Text>No access to camera</Text>
+                <TouchableOpacity
+                  style={styles.scannerActionButton}
+                  onPress={() => setScanning(false)}
+                >
+                  <Text style={styles.scannerActionButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.scannerContent}>
+                <BarCodeScanner
+                  onBarCodeScanned={scanning ? handleBarCodeScanned : undefined}
+                  style={styles.scanner}
+                />
+                <View style={styles.scannerOverlay}>
+                  <View style={styles.scannerTarget} />
+                </View>
+                <View style={styles.scannerInstructions}>
+                  <Text style={styles.scannerInstructionsText}>
+                    Position the barcode or QR code inside the square
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </Modal>
         
         {/* Verification Result Modal */}
         {renderVerificationModal()}
@@ -684,13 +918,13 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     marginBottom: 20,
   },
   actionButton: {
     alignItems: 'center',
-    width: '40%',
+    width: '30%',
   },
   actionIcon: {
     width: 60,
@@ -873,6 +1107,145 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     marginLeft: 5,
+  },
+  // Verification Prompt styles
+  verificationPromptContainer: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verificationPromptHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  verificationPromptTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 10,
+  },
+  verificationPromptDescription: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 25,
+    lineHeight: 22,
+  },
+  boldText: {
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  medicinePreviewImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 25,
+  },
+  verifyNowButton: {
+    flexDirection: 'row',
+    backgroundColor: '#6A5ACD',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifyNowButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
+  },
+  verificationOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 25,
+  },
+  verificationOption: {
+    alignItems: 'center',
+    backgroundColor: '#F0F0FF',
+    paddingVertical: 20,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    width: '45%',
+  },
+  verificationOptionText: {
+    color: '#6A5ACD',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 10,
+  },
+  // Scanner Modal styles
+  scannerContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  scannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  scannerCloseButton: {
+    padding: 5,
+  },
+  scannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 15,
+  },
+  scannerContent: {
+    flex: 1,
+    position: 'relative',
+  },
+  scanner: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scannerTarget: {
+    width: 200,
+    height: 200,
+    borderWidth: 2,
+    borderColor: '#6A5ACD',
+    borderRadius: 12,
+    backgroundColor: 'transparent',
+  },
+  scannerInstructions: {
+    position: 'absolute',
+    bottom: 50,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  scannerInstructionsText: {
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  scannerMessage: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  scannerActionButton: {
+    backgroundColor: '#6A5ACD',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  scannerActionButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   // Modal Styles
   modalOverlay: {
