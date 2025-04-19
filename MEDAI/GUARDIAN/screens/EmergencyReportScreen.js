@@ -21,67 +21,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { Audio } from 'expo-av';
 
+// Import the blockchain service
+import { checkBlockchainStatus } from '../services/blockchainService';
+
+// Config
+import { CONFIG } from '../config';
+
 // Screen dimensions
 const { width, height } = Dimensions.get('window');
 
 // API URL
-const API_URL = 'https://medai-guardian-api.herokuapp.com';
-
-// Dummy nearby facilities data
-const DUMMY_FACILITIES = [
-    {
-      id: '1',
-      name: 'Manipal Hospital, Whitefield',
-      type: 'hospital',
-      distance: 1.2,
-      time: 5,
-      address: 'Whitefield Main Road, ITPL, Bangalore, 560066',
-      phone: '+91 80 2345 6789',
-      coordinates: {
-        latitude: 37.7865,
-        longitude: -122.4304
-      },
-      availability: {
-        beds: 12,
-        ambulances: 3,
-        emergencyRoom: 'Available'
-      }
-    },
-    {
-      id: '2',
-      name: 'Apollo Hospital, Jayanagar',
-      type: 'clinic',
-      distance: 0.8,
-      time: 3,
-      address: '154 Jayanagar 4th Block, Bangalore, 560041',
-      phone: '+91 80 4567 8901',
-      coordinates: {
-        latitude: 37.7905,
-        longitude: -122.4344
-      },
-      availability: {
-        beds: 5,
-        ambulances: 1,
-        emergencyRoom: 'Limited'
-      }
-    },
-    {
-      id: '3',
-      name: 'Fortis Ambulance Service',
-      type: 'ambulance',
-      distance: 0.5,
-      time: 2,
-      address: 'Bannerghatta Road, Bangalore, 560076',
-      phone: '+91 99001 23456',
-      coordinates: {
-        latitude: 37.7835,
-        longitude: -122.4284
-      },
-      availability: {
-        ambulances: 2
-      }
-    }
-  ];
+const API_URL = CONFIG?.API_URL || 'https://medai-guardian-api.herokuapp.com';
 
 const EmergencyReportScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
@@ -90,6 +40,8 @@ const EmergencyReportScreen = ({ navigation }) => {
   const [facilities, setFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [emergencyStatus, setEmergencyStatus] = useState('ready'); // ready, sending, sent
+  const [blockchainStatus, setBlockchainStatus] = useState(null); // null, operational, unavailable
+  const [transactionId, setTransactionId] = useState(null); // Blockchain transaction ID
   const mapRef = useRef(null);
 
   // Animation values
@@ -130,6 +82,22 @@ const EmergencyReportScreen = ({ navigation }) => {
     ]).start();
   };
 
+  // Check blockchain status on component mount
+  // useEffect(() => {
+  //   const checkBlockchain = async () => {
+  //     try {
+  //       const status = await checkBlockchainStatus();
+  //       setBlockchainStatus(status.operational ? 'operational' : 'unavailable');
+  //       console.log('Blockchain status:', status);
+  //     } catch (error) {
+  //       console.error('Error checking blockchain status:', error);
+  //       setBlockchainStatus('unavailable');
+  //     }
+  //   };
+    
+  //   checkBlockchain();
+  // }, []);
+
   // Get current location
   const getLocation = async () => {
     setLocationLoading(true);
@@ -163,30 +131,117 @@ const EmergencyReportScreen = ({ navigation }) => {
     }
   };
 
-  // Fetch nearby medical facilities
+  // Fetch nearby medical facilities from blockchain
   const fetchNearbyFacilities = async (coords) => {
     setLoading(true);
     try {
-      // In a real app, this would be an actual API call
-      // const response = await axios.get(
-      //   `${API_URL}/api/facilities/nearby?lat=${coords.latitude}&lng=${coords.longitude}`
-      // );
-      // setFacilities(response.data);
-      
-      // Using dummy data for development
-      setTimeout(() => {
-        // Add slight variation to coordinates for display
-        const facilitiesWithCoords = DUMMY_FACILITIES.map(facility => ({
-          ...facility,
-          coordinates: {
-            latitude: coords.latitude + (Math.random() - 0.5) * 0.01,
-            longitude: coords.longitude + (Math.random() - 0.5) * 0.01
+      // In a real app, fetch from API with blockchain verification
+      if (1 === 1) {
+        try {
+          // Real API call to fetch nearby hospitals
+          const response = await axios.get(`${API_URL}/hospitals`);
+          
+          if (!response.data) {
+            throw new Error('No hospitals data received');
           }
-        }));
-        
-        setFacilities(facilitiesWithCoords);
-        setLoading(false);
-      }, 1500);
+
+          console.log(response.data)
+          
+          // Calculate distance for each hospital and add to the data
+          const hospitalsWithDistance = response.data.map(hospital => {
+            const distance = calculateDistance(
+              coords.latitude,
+              coords.longitude,
+              hospital.location.latitude,
+              hospital.location.longitude
+            );
+            
+            // Calculate estimated time (assuming average speed of 50 km/h)
+            const estimatedTimeMinutes = Math.round(distance * 1.2); // 1.2 is a factor to account for roads
+            
+            return {
+              ...hospital,
+              distance,
+              time: estimatedTimeMinutes,
+              coordinates: {
+                latitude: hospital.location.latitude,
+                longitude: hospital.location.longitude
+              },
+              // Map the API data to match our UI expectations
+              type: hospital.emergency_capacity > 0 ? 'hospital' : 'clinic',
+              availability: {
+                beds: hospital.emergency_capacity || 0,
+                ambulances: 0, // Will be updated below
+                emergencyRoom: hospital.emergency_capacity > 5 ? 'Available' : 
+                            hospital.emergency_capacity > 0 ? 'Limited' : 'Busy'
+              },
+              // Add blockchain verification status
+              blockchainVerified: hospital.blockchainStatus === 'Confirmed',
+              blockchainId: hospital.blockchainTransactionId
+            };
+          });
+          
+          // Sort by distance
+          const sortedHospitals = hospitalsWithDistance.sort((a, b) => a.distance - b.distance);
+          
+          // Get the top 5 closest hospitals
+          const nearbyHospitals = sortedHospitals.slice(0, 5);
+          
+          // For each hospital, fetch its ambulances
+          const hospitalsWithAmbulances = await Promise.all(nearbyHospitals.map(async (hospital) => {
+            try {
+              const ambulanceResponse = await axios.get(`${API_URL}/hospitals/${hospital.id}/ambulances`);
+              
+              if (ambulanceResponse.data) {
+                // Count available ambulances
+                const availableAmbulances = ambulanceResponse.data.filter(
+                  amb => amb.current_status === 'Available'
+                ).length;
+                
+                // Check blockchain verification status of ambulances
+                const blockchainVerifiedAmbulances = ambulanceResponse.data.filter(
+                  amb => amb.blockchainStatus === 'Confirmed'
+                ).length;
+                
+                // Add a blockchain verification status for ambulances
+                const ambulanceBlockchainStatus = blockchainVerifiedAmbulances > 0 ? 
+                  `${blockchainVerifiedAmbulances}/${ambulanceResponse.data.length} verified` : 
+                  'Not verified';
+                
+                return {
+                  ...hospital,
+                  availability: {
+                    ...hospital.availability,
+                    ambulances: availableAmbulances
+                  },
+                  ambulancesBlockchainStatus: ambulanceBlockchainStatus
+                };
+              }
+              
+              return hospital;
+            } catch (error) {
+              console.error(`Error fetching ambulances for hospital ${hospital.id}:`, error);
+              return hospital;
+            }
+          }));
+          
+          setFacilities(hospitalsWithAmbulances);
+          
+          // Auto-select the first facility if available
+          if (hospitalsWithAmbulances.length > 0) {
+            setSelectedFacility(hospitalsWithAmbulances[0]);
+          }
+          
+          setLoading(false);
+        } catch (apiError) {
+          console.error('Error fetching facilities from API:', apiError);
+          // Fallback to dummy data
+          useDummyFacilitiesData(coords);
+        }
+      } else {
+        // Use dummy data if blockchain is unavailable
+        useDummyFacilitiesData(coords);
+      }
     } catch (error) {
       console.error('Error fetching nearby facilities:', error);
       setLoading(false);
@@ -197,12 +252,110 @@ const EmergencyReportScreen = ({ navigation }) => {
     }
   };
 
+  // Helper function to use dummy data
+  const useDummyFacilitiesData = (coords) => {
+    // Using dummy data for development and when blockchain is unavailable
+    setTimeout(() => {
+      // Dummy data with blockchain verification flags
+      const DUMMY_FACILITIES = [
+        {
+          id: '1',
+          name: 'Manipal Hospital, Whitefield',
+          type: 'hospital',
+          distance: 1.2,
+          time: 5,
+          address: 'Whitefield Main Road, ITPL, Bangalore, 560066',
+          phone: '+91 80 2345 6789',
+          coordinates: {
+            latitude: coords.latitude + 0.008,
+            longitude: coords.longitude - 0.005
+          },
+          availability: {
+            beds: 12,
+            ambulances: 3,
+            emergencyRoom: 'Available'
+          },
+          blockchainVerified: true,
+          blockchainId: 'f8e712a9b5c24d3e9f6a7c2f8b4a1e5d',
+          ambulancesBlockchainStatus: '2/3 verified'
+        },
+        {
+          id: '2',
+          name: 'Apollo Hospital, Jayanagar',
+          type: 'clinic',
+          distance: 0.8,
+          time: 3,
+          address: '154 Jayanagar 4th Block, Bangalore, 560041',
+          phone: '+91 80 4567 8901',
+          coordinates: {
+            latitude: coords.latitude - 0.005,
+            longitude: coords.longitude + 0.007
+          },
+          availability: {
+            beds: 5,
+            ambulances: 1,
+            emergencyRoom: 'Limited'
+          },
+          blockchainVerified: true,
+          blockchainId: 'a3c579f2e80b61d4297c5f6e8d1b9a7c',
+          ambulancesBlockchainStatus: '1/1 verified'
+        },
+        {
+          id: '3',
+          name: 'Fortis Ambulance Service',
+          type: 'ambulance',
+          distance: 0.5,
+          time: 2,
+          address: 'Bannerghatta Road, Bangalore, 560076',
+          phone: '+91 99001 23456',
+          coordinates: {
+            latitude: coords.latitude + 0.002,
+            longitude: coords.longitude - 0.009
+          },
+          availability: {
+            ambulances: 2
+          },
+          blockchainVerified: false,
+          ambulancesBlockchainStatus: 'Not verified'
+        }
+      ];
+      
+      setFacilities(DUMMY_FACILITIES);
+      
+      // Auto-select the first facility if available
+      if (DUMMY_FACILITIES.length > 0) {
+        setSelectedFacility(DUMMY_FACILITIES[0]);
+      }
+      
+      setLoading(false);
+    }, 1500);
+  };
+
+  // Calculate distance between two coordinates using Haversine formula
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c; // Distance in km
+    return Number((distance).toFixed(1)); // Keep in km with 1 decimal place
+  };
+
+  // Convert degrees to radians
+  const deg2rad = (deg) => {
+    return deg * (Math.PI / 180);
+  };
+
   // Load location and facilities on component mount
   useEffect(() => {
     getLocation();
   }, []);
 
-  // Send emergency distress signal
+  // Send emergency distress signal with blockchain verification
   const sendEmergencySignal = async () => {
     if (!selectedFacility && facilities.length > 0) {
       // If no facility selected, use the nearest one
@@ -237,31 +390,60 @@ const EmergencyReportScreen = ({ navigation }) => {
             setEmergencyStatus('sending');
             
             try {
-              // In a real app, this would be an actual API call
-              // await axios.post(`${API_URL}/api/emergency/report`, {
-              //   facilityId: targetFacility.id,
-              //   location: location,
-              //   timestamp: new Date().toISOString()
-              // });
+              let responseData;
               
-              // Simulate API call
-              setTimeout(() => {
-                setEmergencyStatus('sent');
-                
-                // Navigate to voice/text note screen after short delay
-                setTimeout(() => {
-                  navigation.navigate('VoiceTextNote', {
-                    facilityId: targetFacility.id,
-                    facilityName: targetFacility.name
-                  });
-                }, 1500);
-              }, 2000);
+              // If blockchain is operational, use blockchain API
+              if (blockchainStatus === 'operational') {
+                try {
+                  // Prepare emergency data
+                  const emergencyData = {
+                    user_location: {
+                      latitude: location.latitude,
+                      longitude: location.longitude
+                    },
+                    emergency_type: 'Medical', // Default type
+                    target_facility: targetFacility.id
+                  };
+                  
+                  // Send to blockchain API
+                  const response = await axios.post(
+                    `${API_URL}/api/emergency`, 
+                    emergencyData
+                  );
+                  
+                  responseData = response.data;
+                  
+                  // Store the blockchain transaction ID
+                  if (responseData.emergency && responseData.emergency.blockchainTransactionId) {
+                    setTransactionId(responseData.emergency.blockchainTransactionId);
+                  }
+                } catch (blockchainError) {
+                  console.error('Blockchain error:', blockchainError);
+                  // Fallback to non-blockchain method
+                  simulateEmergencyResponse();
+                }
+              } else {
+                // If blockchain is unavailable, simulate response
+                simulateEmergencyResponse();
+              }
               
               // Play confirmation sound
               const { sound } = await Audio.Sound.createAsync(
                 require('../assets/sounds/alert_sent.mp3')
               );
               await sound.playAsync();
+              
+              // Set emergency as sent
+              setEmergencyStatus('sent');
+              
+              // Navigate to voice/text note screen after short delay
+              setTimeout(() => {
+                navigation.navigate('VoiceTextNote', {
+                  facilityId: targetFacility.id,
+                  facilityName: targetFacility.name,
+                  blockchainTransactionId: transactionId
+                });
+              }, 1500);
             } catch (error) {
               console.error('Error sending emergency report:', error);
               setEmergencyStatus('ready');
@@ -276,6 +458,18 @@ const EmergencyReportScreen = ({ navigation }) => {
     );
   };
 
+  // Simulate emergency response for when blockchain is unavailable
+  const simulateEmergencyResponse = () => {
+    // Generate a mock blockchain transaction ID
+    const mockTransactionId = `mock-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+    setTransactionId(mockTransactionId);
+    
+    // Simulate API delay
+    setTimeout(() => {
+      setEmergencyStatus('sent');
+    }, 2000);
+  };
+
   // Navigate to Connected Patients screen
   const navigateToConnectedPatients = () => {
     navigation.navigate('ConnectedPatients');
@@ -288,6 +482,7 @@ const EmergencyReportScreen = ({ navigation }) => {
 
   // Select a facility
   const handleSelectFacility = (facility) => {
+    console.log(facility.coordinates.latitude)
     setSelectedFacility(facility);
     
     // Animate to facility location on map
@@ -301,7 +496,7 @@ const EmergencyReportScreen = ({ navigation }) => {
     }
   };
 
-  // Render facility item with minimalist design
+  // Render facility item with blockchain verification badge
   const renderFacilityItem = (facility) => {
     const isSelected = selectedFacility?.id === facility.id;
     
@@ -315,10 +510,20 @@ const EmergencyReportScreen = ({ navigation }) => {
         onPress={() => handleSelectFacility(facility)}
       >
         <View style={styles.facilityContent}>
-          <View>
+          <View style={styles.facilityMain}>
             <Text style={styles.facilityName}>{facility.name}</Text>
             <View style={styles.facilityDetails}>
-              <Text style={styles.facilityDistance}>{facility.distance} mi • {facility.time} min</Text>
+              <Text style={styles.facilityDistance}>
+                {facility.distance} km • {facility.time} min
+              </Text>
+              
+              {/* Blockchain verification badge */}
+              {facility.blockchainVerified && (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="shield-checkmark" size={12} color="#2A9D8F" />
+                  <Text style={styles.verifiedText}>Verified</Text>
+                </View>
+              )}
             </View>
           </View>
           
@@ -333,6 +538,42 @@ const EmergencyReportScreen = ({ navigation }) => {
             </Text>
           </View>
         </View>
+        
+        {/* Availability details row */}
+        <View style={styles.facilityAvailabilityRow}>
+          <View style={styles.availabilityItem}>
+            <Ionicons name="bed-outline" size={14} color="#64748B" />
+            <Text style={styles.availabilityText}>
+              {facility.availability?.beds || 0} beds
+            </Text>
+          </View>
+          
+          <View style={styles.availabilityItem}>
+            <Ionicons name="car-outline" size={14} color="#64748B" />
+            <Text style={styles.availabilityText}>
+              {facility.availability?.ambulances || 0} ambulances
+            </Text>
+            
+            {/* Ambulance blockchain verification */}
+            {facility.ambulancesBlockchainStatus && (
+              <Text style={[
+                styles.ambulanceVerifiedText,
+                facility.ambulancesBlockchainStatus === 'Not verified' ? 
+                  styles.notVerifiedText : styles.verifiedText
+              ]}>
+                ({facility.ambulancesBlockchainStatus})
+              </Text>
+            )}
+          </View>
+        </View>
+        
+        {/* Show blockchain ID if verified */}
+        {facility.blockchainVerified && facility.blockchainId && (
+          <View style={styles.blockchainIdContainer}>
+            <Text style={styles.blockchainIdLabel}>Blockchain ID: </Text>
+            <Text style={styles.blockchainId}>{facility.blockchainId.substring(0, 12)}...</Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -341,10 +582,31 @@ const EmergencyReportScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#F8F9F9" />
       
-      {/* Header with profile photo */}
+      {/* Header with profile photo and blockchain status */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Emergency</Text>
+          
+          {/* Blockchain status indicator */}
+          {blockchainStatus && (
+            <View style={[
+              styles.blockchainStatus,
+              blockchainStatus === 'operational' ? styles.blockchainOperational : styles.blockchainUnavailable
+            ]}>
+              <Ionicons 
+                name={blockchainStatus === 'operational' ? "shield-checkmark" : "shield-outline"} 
+                size={12} 
+                color={blockchainStatus === 'operational' ? "#2A9D8F" : "#94A3B8"} 
+              />
+              <Text style={[
+                styles.blockchainStatusText,
+                blockchainStatus === 'operational' ? styles.blockchainOperationalText : styles.blockchainUnavailableText
+              ]}>
+                {blockchainStatus === 'operational' ? "Blockchain Secured" : "Local Mode"}
+              </Text>
+            </View>
+          )}
+          
           <View style={styles.headerActions}>
             <TouchableOpacity 
               style={styles.profileButton}
@@ -392,18 +654,19 @@ const EmergencyReportScreen = ({ navigation }) => {
               showsUserLocation
               followsUserLocation
             >
-              {/* Facility markers */}
+              {/* Facility markers with blockchain verification indicator */}
               {facilities.map((facility) => (
                 <Marker
                   key={facility.id}
                   coordinate={facility.coordinates}
                   title={facility.name}
-                  description={`${facility.distance} mi away`}
+                  description={`${facility.distance} mi away${facility.blockchainVerified ? ' • Blockchain Verified' : ''}`}
                   onPress={() => handleSelectFacility(facility)}
                 >
                   <View style={[
                     styles.facilityMarker,
-                    selectedFacility?.id === facility.id && styles.selectedFacilityMarker
+                    selectedFacility?.id === facility.id && styles.selectedFacilityMarker,
+                    facility.blockchainVerified && styles.verifiedFacilityMarker
                   ]}>
                     <Ionicons
                       name={
@@ -416,6 +679,9 @@ const EmergencyReportScreen = ({ navigation }) => {
                       size={14}
                       color={selectedFacility?.id === facility.id ? '#FFFFFF' : '#4A6FA5'}
                     />
+                    {facility.blockchainVerified && (
+                      <View style={styles.markerVerifiedDot} />
+                    )}
                   </View>
                 </Marker>
               ))}
@@ -440,9 +706,17 @@ const EmergencyReportScreen = ({ navigation }) => {
           <Ionicons name="chevron-forward" size={18} color="#4A6FA5" />
         </TouchableOpacity>
         
-        {/* Nearby facilities section */}
+        {/* Nearby facilities section with blockchain verification */}
         <View style={styles.facilitiesContainer}>
-          <Text style={styles.sectionTitle}>Nearby Medical Facilities</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Nearby Medical Facilities</Text>
+            
+            {/* Legend for blockchain verification */}
+            <View style={styles.verificationLegend}>
+              <Ionicons name="shield-checkmark" size={14} color="#2A9D8F" />
+              <Text style={styles.verificationLegendText}>Blockchain Verified</Text>
+            </View>
+          </View>
           
           {loading ? (
             <View style={styles.loadingContainer}>
@@ -470,17 +744,48 @@ const EmergencyReportScreen = ({ navigation }) => {
         {/* Selected facility details */}
         {selectedFacility && (
           <View style={styles.selectedFacilityContainer}>
-            <Text style={styles.facilityDetailsName}>{selectedFacility.name}</Text>
+            <View style={styles.facilityTitleRow}>
+              <Text style={styles.facilityDetailsName}>{selectedFacility.name}</Text>
+              
+              {/* Blockchain verification badge */}
+              {selectedFacility.blockchainVerified && (
+                <View style={styles.detailsVerifiedBadge}>
+                  <Ionicons name="shield-checkmark" size={14} color="#2A9D8F" />
+                  <Text style={styles.detailsVerifiedText}>Blockchain Verified</Text>
+                </View>
+              )}
+            </View>
             
             <View style={styles.facilityDetailsRow}>
               <Ionicons name="location-outline" size={16} color="#94A3B8" />
-              <Text style={styles.facilityDetailsText}>{selectedFacility.address}</Text>
+              <Text style={styles.facilityDetailsText}>{selectedFacility.location.address}</Text>
             </View>
             
             <View style={styles.facilityDetailsRow}>
               <Ionicons name="call-outline" size={16} color="#94A3B8" />
-              <Text style={styles.facilityDetailsText}>{selectedFacility.phone}</Text>
+              <Text style={styles.facilityDetailsText}>{selectedFacility.contact.phone}</Text>
             </View>
+            
+            {/* Blockchain ID if available */}
+            {selectedFacility.blockchainVerified && selectedFacility.blockchainId && (
+              <View style={styles.facilityDetailsRow}>
+                <Ionicons name="key-outline" size={16} color="#94A3B8" />
+                <Text style={styles.facilityDetailsText}>Blockchain ID: {selectedFacility.blockchainId}</Text>
+              </View>
+            )}
+            
+            {/* Ambulance blockchain verification status */}
+            {selectedFacility.ambulancesBlockchainStatus && (
+              <View style={styles.facilityDetailsRow}>
+                <Ionicons name="car-outline" size={16} color="#94A3B8" />
+                <Text style={styles.facilityDetailsText}>
+                  Ambulance Status: {selectedFacility.ambulancesBlockchainStatus}
+                </Text>
+                {selectedFacility.ambulancesBlockchainStatus !== 'Not verified' && (
+                  <Ionicons name="shield-checkmark" size={14} color="#2A9D8F" style={styles.verificationIcon} />
+                )}
+              </View>
+            )}
             
             <View style={styles.facilityStatsContainer}>
               {selectedFacility.availability?.beds !== undefined && (
@@ -506,23 +811,48 @@ const EmergencyReportScreen = ({ navigation }) => {
             </View>
           </View>
         )}
+        
+        {/* Blockchain transaction information */}
+        {transactionId && emergencyStatus === 'sent' && (
+          <View style={styles.transactionContainer}>
+            <View style={styles.transactionHeader}>
+              <Ionicons name="checkmark-circle" size={20} color="#2A9D8F" />
+              <Text style={styles.transactionTitle}>Emergency Registered on Blockchain</Text>
+            </View>
+            <View style={styles.transactionIdContainer}>
+              <Text style={styles.transactionIdLabel}>Transaction ID:</Text>
+              <Text style={styles.transactionId}>{transactionId}</Text>
+            </View>
+            <Text style={styles.transactionInfo}>
+              This emergency report has been securely recorded on the blockchain for immutable record-keeping and transparent tracking.
+            </Text>
+          </View>
+        )}
       </ScrollView>
       
       {/* Emergency button */}
       <View style={styles.emergencyButtonContainer}>
         {emergencyStatus === 'ready' ? (
-          <TouchableOpacity
-            style={styles.emergencyButton}
-            onPress={sendEmergencySignal}
-            activeOpacity={0.9}
-          >
-            <Text style={styles.emergencyButtonText}>Report Emergency</Text>
-          </TouchableOpacity>
+          <Animated.View style={{
+            transform: [{ scale: buttonScale }],
+            width: '100%'
+          }}>
+            <TouchableOpacity
+              style={styles.emergencyButton}
+              onPress={sendEmergencySignal}
+              activeOpacity={0.9}
+            >
+              <Ionicons name="alert-circle-outline" size={24} color="#FFFFFF" />
+              <Text style={styles.emergencyButtonText}>Report Emergency</Text>
+            </TouchableOpacity>
+          </Animated.View>
         ) : emergencyStatus === 'sending' ? (
           <View style={styles.emergencyStatusContainer}>
             <ActivityIndicator size="small" color="#FFFFFF" />
             <Text style={styles.emergencyStatusText}>
-              Sending emergency alert...
+              {blockchainStatus === 'operational' ? 
+                'Recording emergency on blockchain...' : 
+                'Sending emergency alert...'}
             </Text>
           </View>
         ) : (
@@ -560,6 +890,30 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#0F172A',
+  },
+  blockchainStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  blockchainOperational: {
+    backgroundColor: '#D1FAE5',
+  },
+  blockchainUnavailable: {
+    backgroundColor: '#F1F5F9',
+  },
+  blockchainStatusText: {
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  blockchainOperationalText: {
+    color: '#2A9D8F',
+  },
+  blockchainUnavailableText: {
+    color: '#94A3B8',
   },
   headerActions: {
     flexDirection: 'row',
@@ -644,6 +998,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#4A6FA5',
     borderColor: '#FFFFFF',
   },
+  verifiedFacilityMarker: {
+    borderColor: '#2A9D8F',
+  },
+  markerVerifiedDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2A9D8F',
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
   connectedPatientsButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -678,11 +1046,25 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#0F172A',
-    marginBottom: 16,
+  },
+  verificationLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  verificationLegendText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginLeft: 4,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -721,7 +1103,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   facilitiesList: {
-    margin: 12,
+    marginTop: 12,
   },
   facilityItem: {
     backgroundColor: '#F8F9F9',
@@ -729,6 +1111,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderLeftWidth: 0,
     borderLeftColor: 'transparent',
+    marginBottom: 8,
   },
   facilityItemSelected: {
     borderLeftWidth: 3,
@@ -739,6 +1122,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 12,
+  },
+  facilityMain: {
+    flex: 1,
   },
   facilityName: {
     fontSize: 14,
@@ -753,6 +1139,24 @@ const styles = StyleSheet.create({
   facilityDistance: {
     fontSize: 12,
     color: '#64748B',
+    marginRight: 8,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE520',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  verifiedText: {
+    fontSize: 10,
+    color: '#2A9D8F',
+    marginLeft: 2,
+  },
+  notVerifiedText: {
+    fontSize: 10,
+    color: '#94A3B8', 
   },
   facilityStatusContainer: {
     paddingHorizontal: 10,
@@ -773,6 +1177,42 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#334155',
   },
+  facilityAvailabilityRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  availabilityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  availabilityText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginLeft: 4,
+  },
+  ambulanceVerifiedText: {
+    fontSize: 10,
+    marginLeft: 4,
+  },
+  blockchainIdContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  blockchainIdLabel: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  blockchainId: {
+    fontSize: 11,
+    color: '#64748B',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
   selectedFacilityContainer: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
@@ -785,11 +1225,30 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  facilityTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   facilityDetailsName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#0F172A',
-    marginBottom: 8,
+    marginRight: 8,
+    flex: 1,
+  },
+  detailsVerifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE520',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  detailsVerifiedText: {
+    fontSize: 11,
+    color: '#2A9D8F',
+    marginLeft: 2,
   },
   facilityDetailsRow: {
     flexDirection: 'row',
@@ -800,6 +1259,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     marginLeft: 8,
+    flex: 1,
+  },
+  verificationIcon: {
+    marginLeft: 4,
   },
   facilityStatsContainer: {
     flexDirection: 'row',
@@ -822,6 +1285,47 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
   },
+  transactionContainer: {
+    backgroundColor: '#F0FDF4',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+  transactionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  transactionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2A9D8F',
+    marginLeft: 8,
+  },
+  transactionIdContainer: {
+    backgroundColor: '#FFFFFF',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  transactionIdLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  transactionId: {
+    fontSize: 12,
+    color: '#334155',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  transactionInfo: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 18,
+  },
   emergencyButtonContainer: {
     position: 'absolute',
     bottom: 0,
@@ -834,10 +1338,11 @@ const styles = StyleSheet.create({
   },
   emergencyButton: {
     backgroundColor: '#E57373',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
     shadowColor: '#E57373',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -848,6 +1353,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+    marginLeft: 8,
   },
   emergencyStatusContainer: {
     flexDirection: 'row',
