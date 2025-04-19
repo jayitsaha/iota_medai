@@ -1,42 +1,86 @@
 [
   {
     "ambulance": {
-      "ambulance_id": "688bb843-a1bf-40bd-aa92-c8e73876e6d7",
-      "hospital_id": "7cab1acb-afba-409a-a78b-5f0895b009de",
-      "registration_number": "tct u ",
+      "ambulance_id": "a444cd56-2ed2-430d-9f42-216e13a34441",
+      "hospital_id": "453e38c7-a1cf-472f-914a-6a5c63e2d33a",
+      "registration_number": "KA0502",
       "vehicle_type": "Basic",
-      "capacity": 1,
+      "capacity": 2,
       "equipment": [
-        "ECG Monitor",
-        "IV Equipment",
-        "Suction Device"
+        "oxygen",
+        "stretcher",
+        "defibrillator",
+        "monitor"
       ],
       "current_status": "Available",
-      "current_location": null,
-      "last_updated": "2025-04-14T09:08:50.268Z"
+      "current_location": {
+        "latitude": 12.9313574,
+        "longitude": 77.6244918
+      },
+      "last_updated": "2025-04-19T06:27:01.295Z"
     },
-    "block_id": "0xf5d2170b37c01e6ce2339a4ddd5a71bf7fc0a5828c64aa90d3479dc1bf3df4f5",
-    "timestamp": "2025-04-14T09:08:50.268Z"
+    "block_id": "0x653f5129b8e80710cce61fcc7a33c37f81d5b86233d1b840ea93508f6d923f23",
+    "timestamp": "2025-04-19T06:27:01.295Z"
   },
   {
     "ambulance": {
-      "ambulance_id": "4d236af4-f550-4f83-b6e3-1b7fc48f3cbd",
-      "hospital_id": "7cab1acb-afba-409a-a78b-5f0895b009de",
-      "registration_number": "ienxieoxbex",
+      "ambulance_id": "ad4e3ece-eb18-417c-a9aa-74809f81baa6",
+      "hospital_id": "453e38c7-a1cf-472f-914a-6a5c63e2d33a",
+      "registration_number": "KA0501",
       "vehicle_type": "Basic",
-      "capacity": 1,
+      "capacity": 2,
       "equipment": [
-        "IV Equipment",
-        "Medications",
-        "Blood Pressure Monitor",
-        "First Aid Kit",
-        "ECG Monitor"
+        "oxygen",
+        "stretcher",
+        "ventilator",
+        "monitor",
+        "iv"
       ],
-      "current_status": "Maintenance",
+      "current_status": "Available",
       "current_location": null,
-      "last_updated": "2025-04-14T09:09:13.480Z"
+      "last_updated": "2025-04-19T07:30:56.673Z"
     },
-    "block_id": "0xc65c1b06d7bd5cea93e4503f4318256e6eb9dcd306a8e086ac355f9e151047b4",
-    "timestamp": "2025-04-14T09:09:13.480Z"
+    "block_id": "0xc2feae5dc4cb439cd8c2d317c2a62a6a89004fecd61faf1a021aaba117248f7c",
+    "timestamp": "2025-04-19T07:30:56.673Z"
+  },
+  {
+    "ambulance": {
+      "ambulance_id": "089b4437-83b1-4a6e-9886-6e2d8ce76fee",
+      "hospital_id": "453e38c7-a1cf-472f-914a-6a5c63e2d33a",
+      "registration_number": "KA0501",
+      "vehicle_type": "Basic",
+      "capacity": 2,
+      "equipment": [
+        "oxygen",
+        "stretcher",
+        "ventilator",
+        "monitor",
+        "iv"
+      ],
+      "current_status": "Available",
+      "current_location": null,
+      "last_updated": "2025-04-19T07:31:02.348Z"
+    },
+    "block_id": "0x828c3cba75d048455f25eaf31b0ec1280860341aec058582ae71f488054a7a04",
+    "timestamp": "2025-04-19T07:31:02.348Z"
+  },
+  {
+    "ambulance": {
+      "ambulance_id": "fa6643ca-51a8-4cbf-9f8b-850a62652915",
+      "hospital_id": "0837f6c5-7028-4808-9445-3f7ef27cddee",
+      "registration_number": "KA02484",
+      "vehicle_type": "Advanced",
+      "capacity": 2,
+      "equipment": [
+        "oxygen",
+        "stretcher",
+        "defibrillator"
+      ],
+      "current_status": "Available",
+      "current_location": null,
+      "last_updated": "2025-04-19T07:32:30.715Z"
+    },
+    "block_id": "0x10a50ded7b246dde1937aa1cab4ec1459b3855915d4c1ddf9226e613e095c94b",
+    "timestamp": "2025-04-19T07:32:30.715Z"
   }
 ]

@@ -306,5 +306,16 @@
     "provider_address": "tst1qr2vvq7u3zczg3fw8zdfgh0pw2dpu8w3px8ccrs2jhwjz580er7lcs9g403",
     "status": "Scheduled",
     "timestamp": "2025-04-12T15:12:35.199Z"
+  },
+  {
+    "id": "0x1d61cbabf035551bcf51329f05ba4787cbc51d337bc89c76d98cca9cb88ceee9",
+    "booking_id": "9c0b4668-bbe8-4ac5-9611-94d180503735",
+    "service_id": "81593bcc-dc2c-4c81-a472-235a960195e2",
+    "user_id": "provider_123456",
+    "appointment_date": "2025-04-23T07:10:00.000Z",
+    "price": 5,
+    "provider_address": "tst1qr2vvq7u3zczg3fw8zdfgh0pw2dpu8w3px8ccrs2jhwjz580er7lcs9g403",
+    "status": "Scheduled",
+    "timestamp": "2025-04-19T07:10:54.908Z"
   }
 ]

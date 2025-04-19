@@ -21,6 +21,8 @@ import { CONFIG } from '../config';
 
 const API_URL = CONFIG?.API_URL || 'http://localhost:3000/api';
 
+
+
 const HospitalLoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,7 +47,7 @@ const HospitalLoginScreen = ({ navigation }) => {
     //   });
 
       // Store auth token
-      await AsyncStorage.setItem('authToken', 'response.data.token');
+      await AsyncStorage.setItem('authToken', email);
       await AsyncStorage.setItem('userType', 'hospital');
     //   await AsyncStorage.setItem('hospitalData', JSON.stringify(response.data.hospital));
 

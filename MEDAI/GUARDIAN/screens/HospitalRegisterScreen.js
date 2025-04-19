@@ -32,7 +32,7 @@ const HospitalRegisterScreen = ({ navigation }) => {
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
-  const [postalCode, setPostalCode] = useState('');
+  const [postal_code, setpostal_code] = useState('');
   const [country, setCountry] = useState('India');
   const [coordinates, setCoordinates] = useState({ latitude: null, longitude: null });
   const [emergencyCapacity, setEmergencyCapacity] = useState('10');
@@ -124,7 +124,7 @@ const HospitalRegisterScreen = ({ navigation }) => {
         setAddress(addressInfo.street || '');
         setCity(addressInfo.city || '');
         setState(addressInfo.region || '');
-        setPostalCode(addressInfo.postalCode || '');
+        setpostal_code(addressInfo.postalCode || '');
         setCountry(addressInfo.country || 'India');
       }
 
@@ -172,14 +172,16 @@ const HospitalRegisterScreen = ({ navigation }) => {
           address,
           city,
           state,
-          postalCode,
+          postal_code,
           country,
           latitude: coordinates.latitude,
           longitude: coordinates.longitude
         },
         contact: {
           email,
-          phone
+          phone,
+          website: '',
+          emergency_phone: '',
         },
         services,
         emergency_capacity: parseInt(emergencyCapacity) || 0
@@ -414,8 +416,8 @@ const HospitalRegisterScreen = ({ navigation }) => {
               placeholder="Postal code"
               placeholderTextColor="#94A3B8"
               keyboardType="numeric"
-              value={postalCode}
-              onChangeText={setPostalCode}
+              value={postal_code}
+              onChangeText={setpostal_code}
             />
           </View>
         </View>

@@ -112,13 +112,48 @@ const AmbulanceManagementScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to load hospital information.');
     }
   };
+
+  const API_BASE_URL = 'http://192.168.71.82:5001';
+  
+  const getHopsitalID = async (email) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/get-hospital-id`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Prescription verification API error:', error);
+      return { verified: false, error: error.message };
+    }
+  };
   
   // Load ambulances for the hospital
   const loadAmbulances = async () => {
+
+    const hosp_email = await AsyncStorage.getItem('authToken');
+    console.log(hosp_email)
+
+    const hospital_id = await getHopsitalID(hosp_email);
+
+    console.log("GETTING HOSPITAL ID FROM API")
+    console.log(hospital_id.hospital_id)
+
+
     try {
       setLoading(true);
       
-      const response = await axios.get(`${API_URL}/hospitals/8c000a74-f9dc-4b2b-a78c-012f50261070/ambulances`);
+      const response = await axios.get(`${API_URL}/hospitals/${hospital_id.hospital_id}/ambulances`);
       setAmbulances(response.data);
     } catch (error) {
       console.error('Error loading ambulances:', error);
@@ -217,6 +252,16 @@ const AmbulanceManagementScreen = ({ navigation }) => {
   
   // Handle save ambulance (add/edit)
   const handleSaveAmbulance = async () => {
+
+    const hosp_email = await AsyncStorage.getItem('authToken');
+    console.log(hosp_email)
+
+    const hospital_id = await getHopsitalID(hosp_email);
+
+    console.log("GETTING HOSPITAL ID FROM API")
+    console.log(hospital_id.hospital_id)
+
+
     try {
       // Validate form data
       if (!ambulanceForm.registration_number) {
@@ -258,7 +303,7 @@ const AmbulanceManagementScreen = ({ navigation }) => {
         };
         
         // Submit to API
-        const response = await fetch(`${API_URL}/hospitals/8c000a74-f9dc-4b2b-a78c-012f50261070/ambulances`, {
+        const response = await fetch(`${API_URL}/hospitals/${hospital_id.hospital_id}/ambulances`, {
           method: 'POST',
           headers: {
             'user-id': 'demo-user', // Replace with actual user ID

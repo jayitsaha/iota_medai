@@ -33,15 +33,49 @@ const HospitalDashboardScreen = ({ navigation }) => {
     organDonorCount: 0
   });
 
+  const API_BASE_URL = 'http://192.168.71.82:5001';
+  
+  const getHopsitalID = async (email) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/get-hospital-id`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Prescription verification API error:', error);
+      return { verified: false, error: error.message };
+    }
+  };
+
   // Load hospital data from storage or fetch from API
   const loadHospitalData = async () => {
+
+    console.log("GETTING HOSPITAL EMAIL")
+    const hosp_email = await AsyncStorage.getItem('authToken');
+    console.log(hosp_email)
+
+    const hospital_id = await getHopsitalID(hosp_email);
+
+    console.log("GETTING HOSPITAL ID FROM API")
+    console.log(hospital_id.hospital_id)
     
           
           // Fetch ambulances for this hospital
-    fetchAmbulances('8c000a74-f9dc-4b2b-a78c-012f50261070');
+    fetchAmbulances(hospital_id.hospital_id);
     
     // Fetch hospital stats
-    fetchHospitalStats('8c000a74-f9dc-4b2b-a78c-012f50261070');
+    fetchHospitalStats(hospital_id.hospital_id);
 
     setLoading(false)
        

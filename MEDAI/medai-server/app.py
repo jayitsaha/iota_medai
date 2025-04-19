@@ -1565,7 +1565,7 @@ def get_reference_pose(pose_id):
             }
         })
     
-RECORDS_PATH = '/Users/j0s0yz3/Downloads/iota/iota/server/medicine_records.json'
+RECORDS_PATH = '/Users/j0s0yz3/Downloads/iota/MEDAI/iota_medai/iota/server/medicine_records.json'
 @app.route('/api/verify-medicine-blockchain', methods=['POST'])
 def verify_medicine():
     try:
@@ -1607,8 +1607,7 @@ def verify_medicine():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
-PRESCRIPTIONS_PATH = '/Users/j0s0yz3/Downloads/iota/iota/server/healthcare_records.json'
-
+PRESCRIPTIONS_PATH = '/Users/j0s0yz3/Downloads/iota/MEDAI/iota_medai/iota/server/healthcare_records.json'
 @app.route('/api/verify-prescription-blockchain', methods=['POST'])
 def verify_prescription():
     try:
@@ -1675,6 +1674,47 @@ def verify_prescription():
             
     except Exception as e:
         print(f"Error in verify_prescription: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    
+
+HOSPITAL_PATH = '/Users/j0s0yz3/Downloads/iota/MEDAI/iota_medai/iota/server/data/hospitals.json'
+@app.route('/api/get-hospital-id', methods=['POST'])
+def getHospID():
+    try:
+        # Get serial number from request
+        data = request.get_json()
+        if not data or 'email' not in data:
+            return jsonify({'error': 'Email is required'}), 400
+        
+        email = data['email']
+
+        print(email)
+        
+        # Check if the file exists
+        if not os.path.exists(HOSPITAL_PATH):
+            return jsonify({'error': 'Medicine records file not found'}), 500
+        
+        # Read and parse the JSON file
+        with open(HOSPITAL_PATH, 'r') as file:
+            hosp_records = json.load(file)
+
+        print(type(hosp_records[0]))
+
+        print(hosp_records[0]['id'])
+        
+        # Find the medicine record by serial number
+        hosp_record = next((record for record in hosp_records 
+                               if record['contact']['email'] == email), None)
+        
+        print(hosp_record)
+        
+        if hosp_record:
+            return jsonify({
+                'hospital_id': hosp_record['id'],
+                'message': 'Hosital ID Matched'
+            })
+            
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

@@ -28,7 +28,7 @@ import {
 import ThreeJsReferenceModel from './ThreeJsReferenceModel';
 
 // API base URL
-const API_BASE_URL = 'http://192.168.160.82:5001'; 
+const API_BASE_URL = 'http://192.168.71.82:5001'; 
 
 const YogaPoseEstimator = ({ pose, onClose, onComplete }) => {
   const [hasPermission, setHasPermission] = useState(null);

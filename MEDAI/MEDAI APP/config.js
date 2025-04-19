@@ -2,7 +2,7 @@
 
 export const CONFIG = {
   // API URL - change this to your server's address
-  API_URL: "http://192.168.160.82:3000/api",
+  API_URL: "http://192.168.71.82:3000/api",
   
   // IOTA Nodes (for direct access - currently using server as middleware)
   NODES: [

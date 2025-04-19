@@ -1,34 +1,99 @@
 [
   {
-    "id": "7cab1acb-afba-409a-a78b-5f0895b009de",
-    "name": "uvivibo",
+    "id": "453e38c7-a1cf-472f-914a-6a5c63e2d33a",
+    "name": "Manipal ",
     "location": {
-      "latitude": 12.9325443,
-      "longitude": 77.6928473,
-      "address": "uvuvvib",
+      "address": "16th A Main Road",
       "city": "Bengaluru",
       "state": "Karnataka",
+      "postal_code": "560034",
       "country": "India",
-      "postal_code": "560103"
+      "latitude": 12.9313323,
+      "longitude": 77.6244723
     },
     "contact": {
-      "phone": "6068228",
-      "email": "hvivvi",
-      "website": "uvvibib",
-      "emergency_phone": "606060828"
+      "email": "hosp@gmail.com",
+      "phone": "946194949",
+      "website": "",
+      "emergency_phone": ""
     },
     "services": [
-      "Gynecology",
-      "Laboratory",
-      "Orthopedics",
-      "Cardiology"
+      "emergency",
+      "ambulance"
     ],
     "emergency_capacity": 10,
     "verification_status": "verified",
-    "blockchainTransactionId": "0xb047e3d53cc9b8aa5299ad460de6bc389850554702948fd00e776df9bb14365d",
+    "blockchainTransactionId": "0x26942df32327a6a5433af80d7d1914dd6262c12c8e8a7fe0e5175935ff9cf778",
     "blockchainStatus": "Confirmed",
     "adminId": "demo-user",
-    "createdAt": "2025-04-14T08:32:11.141Z",
-    "updatedAt": "2025-04-14T08:32:11.141Z"
+    "createdAt": "2025-04-19T05:30:13.735Z",
+    "updatedAt": "2025-04-19T05:30:13.736Z"
+  },
+  {
+    "id": "9da3a31c-c10c-436c-9696-6de049e01af6",
+    "name": "Sakra",
+    "location": {
+      "address": "17th A Main Road",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "postal_code": "560035",
+      "country": "India",
+      "latitude": 12.9313619,
+      "longitude": 77.6244893
+    },
+    "contact": {
+      "email": "hosp1@gmail.com",
+      "phone": "956167697",
+      "website": "",
+      "emergency_phone": ""
+    },
+    "services": [
+      "emergency",
+      "ambulance",
+      "cardiology",
+      "organ_donor",
+      "surgery",
+      "pediatrics"
+    ],
+    "emergency_capacity": 10,
+    "verification_status": "verified",
+    "blockchainTransactionId": "0x32680df2db18a8442507e0b3b64b995b12d72ac3d3a237fd6319e0ab2a8ba537",
+    "blockchainStatus": "Confirmed",
+    "adminId": "demo-user",
+    "createdAt": "2025-04-19T05:57:24.227Z",
+    "updatedAt": "2025-04-19T05:57:24.228Z"
+  },
+  {
+    "id": "0837f6c5-7028-4808-9445-3f7ef27cddee",
+    "name": "Apollo",
+    "location": {
+      "address": "Ellis St",
+      "city": "San Francisco",
+      "state": "CA",
+      "postal_code": "94108",
+      "country": "United States",
+      "latitude": 37.785834,
+      "longitude": -122.406417
+    },
+    "contact": {
+      "email": "hosp2@gmail.com",
+      "phone": "82928392839",
+      "website": "",
+      "emergency_phone": ""
+    },
+    "services": [
+      "emergency",
+      "ambulance",
+      "surgery",
+      "organ_donor",
+      "cardiology"
+    ],
+    "emergency_capacity": 10,
+    "verification_status": "verified",
+    "blockchainTransactionId": "0xaab52c0d8eec46020782ecc6c04420688513843c26785f6f2a00f427a7a7478e",
+    "blockchainStatus": "Confirmed",
+    "adminId": "demo-user",
+    "createdAt": "2025-04-19T07:19:14.461Z",
+    "updatedAt": "2025-04-19T07:19:14.462Z"
   }
 ]
